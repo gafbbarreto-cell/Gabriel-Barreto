@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minhas Candidaturas</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1f2328;
+      --muted: #656d76;
+      --border: #d0d7de;
+      --accent: #2563eb;
+      --danger: #dc2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --card: #161b22;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --border: #30363d;
+        --accent: #4f8cff;
+        --danger: #f87171;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.4;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    .subtitle { margin: 0 0 24px; color: var(--muted); }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--muted); }
+    input, select, textarea {
+      font: inherit;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    textarea { resize: vertical; min-height: 38px; }
+    .full { grid-column: 1 / -1; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      font: inherit;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.danger { color: var(--danger); }
+    button.small { padding: 4px 10px; font-size: .85rem; }
+
+    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .toolbar .spacer { flex: 1; }
+    .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .chip {
+      font-size: .8rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+
+    .list { display: grid; gap: 12px; }
+    .item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--status-color, var(--border));
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .item-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .company { font-weight: 600; font-size: 1.05rem; }
+    .role { color: var(--muted); }
+    .status {
+      align-self: flex-start;
+      font-size: .8rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--status-color);
+    }
+    .next { margin: 10px 0 0; white-space: pre-wrap; }
+    .next b { color: var(--muted); font-weight: 500; }
+    .meta { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
+    .empty { text-align: center; color: var(--muted); padding: 32px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Minhas Candidaturas</h1>
+  <p class="subtitle">Acompanhe as empresas, vagas, status e próximos passos de cada processo seletivo.</p>
+
+  <section class="panel">
+    <form id="form">
+      <input type="hidden" id="id">
+      <label>Empresa
+        <input id="company" required placeholder="Ex.: Nubank">
+      </label>
+      <label>Vaga
+        <input id="role" required placeholder="Ex.: Product Manager">
+      </label>
+      <label>Status
+        <select id="status"></select>
+      </label>
+      <label class="full">Próximos passos
+        <textarea id="nextSteps" rows="2" placeholder="Ex.: Entrevista com o gestor na quinta, 14h"></textarea>
+      </label>
+      <div class="actions full">
+        <button type="submit" class="primary" id="submitBtn">Adicionar</button>
+        <button type="button" id="cancelBtn" hidden>Cancelar edição</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="toolbar">
+    <label>Filtrar por status
+      <select id="filter"><option value="">Todos</option></select>
+    </label>
+    <div class="spacer"></div>
+    <button type="button" class="small" id="exportBtn">Exportar backup</button>
+    <button type="button" class="small" id="importBtn">Importar backup</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div>
+
+  <div class="summary" id="summary"></div>
+  <div class="list" id="list"></div>
+</main>
+
+<script>
+  const STORAGE_KEY = 'candidaturas.v1';
+
+  const STATUSES = [
+    { name: 'Aplicado',        color: '#6b7280' },
+    { name: 'Em análise',      color: '#2563eb' },
+    { name: 'Entrevista',      color: '#7c3aed' },
+    { name: 'Teste / Case',    color: '#d97706' },
+    { name: 'Oferta',          color: '#16a34a' },
+    { name: 'Recusado',        color: '#dc2626' },
+    { name: 'Desisti',         color: '#475569' },
+  ];
+  const colorOf = name => (STATUSES.find(s => s.name === name) || {}).color || '#6b7280';
+
+  const $ = id => document.getElementById(id);
+  const form = $('form');
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(apps)); }
+    catch { alert('Não foi possível salvar no navegador. Use "Exportar backup" para não perder os dados.'); }
+  }
+
+  let apps = load();
+
+  for (const s of STATUSES) {
+    $('status').add(new Option(s.name, s.name));
+    $('filter').add(new Option(s.name, s.name));
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function formatDate(iso) {
+    return new Date(iso).toLocaleDateString('pt-BR');
+  }
+
+  function render() {
+    const filter = $('filter').value;
+    const visible = apps
+      .filter(a => !filter || a.status === filter)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    $('summary').innerHTML = [`<span class="chip">Total: ${apps.length}</span>`]
+      .concat(STATUSES
+        .map(s => [s, apps.filter(a => a.status === s.name).length])
+        .filter(([, n]) => n > 0)
+        .map(([s, n]) => `<span class="chip" style="border-color:${s.color}">${s.name}: ${n}</span>`))
+      .join('');
+
+    if (!visible.length) {
+      $('list').innerHTML = `<div class="empty">${apps.length ? 'Nenhuma candidatura com esse status.' : 'Nenhuma candidatura ainda. Adicione a primeira acima!'}</div>`;
+      return;
+    }
+
+    $('list').innerHTML = visible.map(a => `
+      <article class="item" style="--status-color:${colorOf(a.status)}">
+        <div class="item-head">
+          <div>
+            <div class="company">${escapeHtml(a.company)}</div>
+            <div class="role">${escapeHtml(a.role)}</div>
+          </div>
+          <span class="status">${escapeHtml(a.status)}</span>
+        </div>
+        ${a.nextSteps ? `<p class="next"><b>Próximos passos:</b> ${escapeHtml(a.nextSteps)}</p>` : ''}
+        <div class="meta">
+          <span>Aplicado em ${formatDate(a.createdAt)} · Atualizado em ${formatDate(a.updatedAt)}</span>
+          <span class="actions">
+            <button class="small" data-edit="${a.id}">Editar</button>
+            <button class="small danger" data-delete="${a.id}">Excluir</button>
+          </span>
+        </div>
+      </article>`).join('');
+  }
+
+  function resetForm() {
+    form.reset();
+    $('id').value = '';
+    $('submitBtn').textContent = 'Adicionar';
+    $('cancelBtn').hidden = true;
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const now = new Date().toISOString();
+    const data = {
+      company: $('company').value.trim(),
+      role: $('role').value.trim(),
+      status: $('status').value,
+      nextSteps: $('nextSteps').value.trim(),
+    };
+    const id = $('id').value;
+    if (id) {
+      const app = apps.find(a => a.id === id);
+      Object.assign(app, data, { updatedAt: now });
+    } else {
+      apps.push({ id: crypto.randomUUID(), ...data, createdAt: now, updatedAt: now });
+    }
+    save();
+    resetForm();
+    render();
+  });
+
+  $('cancelBtn').addEventListener('click', resetForm);
+  $('filter').addEventListener('change', render);
+
+  $('list').addEventListener('click', e => {
+    const editId = e.target.dataset.edit;
+    const deleteId = e.target.dataset.delete;
+    if (editId) {
+      const a = apps.find(x => x.id === editId);
+      $('id').value = a.id;
+      $('company').value = a.company;
+      $('role').value = a.role;
+      $('status').value = a.status;
+      $('nextSteps').value = a.nextSteps;
+      $('submitBtn').textContent = 'Salvar alterações';
+      $('cancelBtn').hidden = false;
+      $('company').focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (deleteId) {
+      const a = apps.find(x => x.id === deleteId);
+      if (confirm(`Excluir a candidatura para ${a.company}?`)) {
+        apps = apps.filter(x => x.id !== deleteId);
+        save();
+        render();
+      }
+    }
+  });
+
+  $('exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(apps, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `candidaturas-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+
+  $('importBtn').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!Array.isArray(data)) throw new Error();
+      if (confirm(`Importar ${data.length} candidatura(s)? Isso substitui a lista atual.`)) {
+        apps = data;
+        save();
+        render();
+      }
+    } catch {
+      alert('Arquivo inválido.');
+    }
+    e.target.value = '';
+  });
+
+  render();
+</script>
+</body>
+</html>
