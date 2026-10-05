@@ -107,6 +107,10 @@
     }
     .next { margin: 10px 0 0; white-space: pre-wrap; }
     .next b { color: var(--muted); font-weight: 500; }
+    .facts { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+    details { margin-top: 8px; }
+    details summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+    details p { margin: 6px 0 0; white-space: pre-wrap; }
     .meta { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
     .empty { text-align: center; color: var(--muted); padding: 32px 0; }
   </style>
@@ -128,8 +132,20 @@
       <label>Status
         <select id="status"></select>
       </label>
+      <label>Faixa de remuneração
+        <input id="salary" placeholder="Ex.: R$ 20–25 mil (CLT)">
+      </label>
+      <label>Nota no Bússola de Carreira (0 a 5)
+        <input id="bussolaScore" type="number" min="0" max="5" step="0.01" placeholder="Ex.: 3.81">
+      </label>
       <label class="full">Próximos passos
         <textarea id="nextSteps" rows="2" placeholder="Ex.: Entrevista com o gestor na quinta, 14h"></textarea>
+      </label>
+      <label class="full">Descrição da vaga
+        <textarea id="jobDescription" rows="3" placeholder="Escopo, responsabilidades, requisitos..."></textarea>
+      </label>
+      <label class="full">Descrição da empresa
+        <textarea id="companyDescription" rows="2" placeholder="Setor, tamanho, momento..."></textarea>
       </label>
       <div class="actions full">
         <button type="submit" class="primary" id="submitBtn">Adicionar</button>
@@ -189,6 +205,8 @@
     return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  const hasScore = a => a.bussolaScore !== undefined && a.bussolaScore !== null && a.bussolaScore !== '';
+
   function formatDate(iso) {
     return new Date(iso).toLocaleDateString('pt-BR');
   }
@@ -220,7 +238,13 @@
           </div>
           <span class="status">${escapeHtml(a.status)}</span>
         </div>
+        ${a.salary || hasScore(a) ? `<div class="facts">
+          ${a.salary ? `<span class="chip">💰 ${escapeHtml(a.salary)}</span>` : ''}
+          ${hasScore(a) ? `<span class="chip">🧭 Bússola: ${Number(a.bussolaScore).toFixed(2).replace('.', ',')} / 5</span>` : ''}
+        </div>` : ''}
         ${a.nextSteps ? `<p class="next"><b>Próximos passos:</b> ${escapeHtml(a.nextSteps)}</p>` : ''}
+        ${a.jobDescription ? `<details><summary>Descrição da vaga</summary><p>${escapeHtml(a.jobDescription)}</p></details>` : ''}
+        ${a.companyDescription ? `<details><summary>Sobre a empresa</summary><p>${escapeHtml(a.companyDescription)}</p></details>` : ''}
         <div class="meta">
           <span>Aplicado em ${formatDate(a.createdAt)} · Atualizado em ${formatDate(a.updatedAt)}</span>
           <span class="actions">
@@ -246,6 +270,10 @@
       role: $('role').value.trim(),
       status: $('status').value,
       nextSteps: $('nextSteps').value.trim(),
+      salary: $('salary').value.trim(),
+      bussolaScore: $('bussolaScore').value === '' ? '' : Number($('bussolaScore').value),
+      jobDescription: $('jobDescription').value.trim(),
+      companyDescription: $('companyDescription').value.trim(),
     };
     const id = $('id').value;
     if (id) {
@@ -272,6 +300,7 @@
       $('role').value = a.role;
       $('status').value = a.status;
       $('nextSteps').value = a.nextSteps;
+      for (const f of ['salary', 'bussolaScore', 'jobDescription', 'companyDescription']) $(f).value = a[f] ?? '';
       $('submitBtn').textContent = 'Salvar alterações';
       $('cancelBtn').hidden = false;
       $('company').focus();
@@ -296,6 +325,43 @@
     URL.revokeObjectURL(link.href);
   });
 
+  // Mesma id (backup deste app): substitui pelo conteúdo do arquivo.
+  // Mesma empresa com outra id (ex.: dados do Bússola): só preenche os campos vazios.
+  // Caso contrário: adiciona como nova candidatura.
+  function mergeImport(items) {
+    const norm = s => String(s || '').trim().toLowerCase();
+    let added = 0, updated = 0;
+    for (const item of items) {
+      if (!item || !item.company) continue;
+      const byId = item.id && apps.find(a => a.id === item.id);
+      if (byId) {
+        Object.assign(byId, item);
+        updated++;
+        continue;
+      }
+      const byCompany = apps.find(a => norm(a.company) === norm(item.company));
+      if (byCompany) {
+        let changed = false;
+        for (const [k, v] of Object.entries(item)) {
+          if (k === 'id' || v === '' || v == null) continue;
+          if (byCompany[k] === undefined || byCompany[k] === '') { byCompany[k] = v; changed = true; }
+        }
+        if (changed) { byCompany.updatedAt = new Date().toISOString(); updated++; }
+        continue;
+      }
+      const now = new Date().toISOString();
+      apps.push({
+        status: STATUSES[0].name, role: '', nextSteps: '',
+        ...item,
+        id: item.id || crypto.randomUUID(),
+        createdAt: item.createdAt || now,
+        updatedAt: item.updatedAt || now,
+      });
+      added++;
+    }
+    return { added, updated };
+  }
+
   $('importBtn').addEventListener('click', () => $('importFile').click());
   $('importFile').addEventListener('change', async e => {
     const file = e.target.files[0];
@@ -303,10 +369,11 @@
     try {
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data)) throw new Error();
-      if (confirm(`Importar ${data.length} candidatura(s)? Isso substitui a lista atual.`)) {
-        apps = data;
+      if (confirm(`Importar ${data.length} candidatura(s)? Nada da sua lista atual será apagado.`)) {
+        const { added, updated } = mergeImport(data);
         save();
         render();
+        alert(`Importação concluída: ${added} nova(s), ${updated} atualizada(s).`);
       }
     } catch {
       alert('Arquivo inválido.');
