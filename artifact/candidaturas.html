@@ -1,0 +1,486 @@
+<title>Minhas Candidaturas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: pipeline strip on top as the summary, form folded into a drawer, cards below as the working list. */
+  :root {
+    --bg: #F3F5F4;
+    --surface: #FFFFFF;
+    --surface-2: #E8EDEB;
+    --ink: #17201D;
+    --ink-soft: #55625D;
+    --ink-faint: #8A9690;
+    --line: #D3DCD8;
+    --accent: #1F6F5C;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #DCEDE7;
+    --danger: #B23A3A;
+    --s-aplicado: #6B7A74;
+    --s-analise: #2F6FB3;
+    --s-entrevista: #7A4FB0;
+    --s-teste: #B7791F;
+    --s-oferta: #2E8A4E;
+    --s-recusado: #B23A3A;
+    --s-desisti: #4F5B57;
+    --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+    --font-body: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101614;
+      --surface: #18201D;
+      --surface-2: #212B27;
+      --ink: #E7EEEB;
+      --ink-soft: #A9B6B1;
+      --ink-faint: #75827D;
+      --line: #2E3A36;
+      --accent: #5CC2A6;
+      --accent-ink: #0E1A16;
+      --accent-soft: #1C3A31;
+      --danger: #E58080;
+      --s-aplicado: #93A29C;
+      --s-analise: #6FA8E6;
+      --s-entrevista: #B392E0;
+      --s-teste: #E0AC5A;
+      --s-oferta: #6CC98D;
+      --s-recusado: #E58080;
+      --s-desisti: #8C9893;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101614;
+    --surface: #18201D;
+    --surface-2: #212B27;
+    --ink: #E7EEEB;
+    --ink-soft: #A9B6B1;
+    --ink-faint: #75827D;
+    --line: #2E3A36;
+    --accent: #5CC2A6;
+    --accent-ink: #0E1A16;
+    --accent-soft: #1C3A31;
+    --danger: #E58080;
+    --s-aplicado: #93A29C;
+    --s-analise: #6FA8E6;
+    --s-entrevista: #B392E0;
+    --s-teste: #E0AC5A;
+    --s-oferta: #6CC98D;
+    --s-recusado: #E58080;
+    --s-desisti: #8C9893;
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; display: flex; flex-direction: column; gap: 24px; }
+  h1, h2 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(28px, 5vw, 38px); font-weight: 700; letter-spacing: -0.01em; }
+  .lede { margin: 6px 0 0; color: var(--ink-soft); max-width: 60ch; }
+
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Pipeline */
+  .pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 8px; }
+  .stage {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: left;
+    display: flex; flex-direction: column; gap: 2px;
+    border-top: 3px solid var(--c);
+  }
+  .stage[aria-pressed="true"] { background: var(--surface-2); border-color: var(--c); }
+  .stage .n { font-family: var(--font-mono); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .stage .l { font-size: 13px; color: var(--ink-soft); }
+
+  /* Toolbar */
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .toolbar .spacer { flex: 1; }
+  .btn {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-weight: 500;
+  }
+  .btn:hover { border-color: var(--ink-faint); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.small { padding: 4px 10px; font-size: 14px; }
+  .btn.danger { color: var(--danger); }
+  .btn.danger.armed { background: var(--danger); border-color: var(--danger); color: var(--surface); }
+  .select { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 7px 10px; }
+
+  /* Form drawer */
+  .drawer { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .drawer h2 { font-size: 20px; font-weight: 500; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field.full { grid-column: 1 / -1; }
+  .field span { font-size: 13px; font-weight: 600; color: var(--ink-soft); letter-spacing: 0.02em; }
+  .field input, .field select, .field textarea {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    width: 100%;
+  }
+  .field textarea { resize: vertical; }
+  .form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Cards */
+  .list { display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--c);
+    border-radius: 8px;
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    min-width: 0;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .company { font-family: var(--font-display); font-size: 19px; font-weight: 700; }
+  .role { color: var(--ink-soft); }
+  .pill {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--c); background: var(--surface-2);
+    border: 1px solid var(--c);
+    border-radius: 999px; padding: 2px 10px; white-space: nowrap;
+  }
+  .facts { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 14px; }
+  .fact-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); }
+  .salary { min-width: 0; max-width: 100%; }
+  .score { display: flex; align-items: center; gap: 8px; }
+  .score-track { width: 90px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+  .score-fill { height: 100%; background: var(--accent); }
+  .score-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 14px; }
+  .next { background: var(--accent-soft); border-radius: 6px; padding: 8px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .next b { font-weight: 600; }
+  details summary { cursor: pointer; color: var(--ink-soft); font-size: 14px; font-weight: 500; }
+  details p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); max-width: 70ch; }
+  .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-faint); }
+  .card-foot .actions { display: flex; gap: 6px; }
+
+  .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 32px 20px; text-align: center; color: var(--ink-soft); }
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    background: var(--ink); color: var(--bg);
+    padding: 10px 16px; border-radius: 8px; font-size: 14px;
+    max-width: calc(100% - 32px);
+  }
+  .import-note { font-size: 13px; color: var(--ink-faint); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Minhas Candidaturas</h1>
+    <p class="lede">Empresas, vagas, status e próximos passos de cada processo seletivo, com a nota de cada vaga no Bússola de Carreira.</p>
+  </header>
+
+  <nav class="pipeline" id="pipeline" aria-label="Filtrar por etapa"></nav>
+
+  <div class="toolbar">
+    <button class="btn primary" id="newBtn" type="button">+ Nova candidatura</button>
+    <div class="spacer"></div>
+    <label>
+      <span class="import-note">Ordenar por </span>
+      <select class="select" id="sort">
+        <option value="updated">Última atualização</option>
+        <option value="score">Nota no Bússola</option>
+        <option value="company">Empresa (A–Z)</option>
+      </select>
+    </label>
+    <button class="btn small" id="importBtn" type="button">Importar backup</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </div>
+
+  <form class="drawer" id="form" hidden>
+    <h2 id="formTitle">Nova candidatura</h2>
+    <div class="grid">
+      <label class="field"><span>Empresa</span><input id="company" required></label>
+      <label class="field"><span>Vaga</span><input id="role" required></label>
+      <label class="field"><span>Status</span><select id="status"></select></label>
+      <label class="field"><span>Faixa de remuneração</span><input id="salary" placeholder="Ex.: R$ 20–25 mil (CLT)"></label>
+      <label class="field"><span>Nota no Bússola (0 a 5)</span><input id="bussolaScore" type="number" min="0" max="5" step="0.01"></label>
+      <label class="field full"><span>Próximos passos</span><textarea id="nextSteps" rows="2"></textarea></label>
+      <label class="field full"><span>Descrição da vaga</span><textarea id="jobDescription" rows="3"></textarea></label>
+      <label class="field full"><span>Descrição da empresa</span><textarea id="companyDescription" rows="2"></textarea></label>
+    </div>
+    <div class="form-actions">
+      <button class="btn primary" type="submit" id="submitBtn">Adicionar</button>
+      <button class="btn" type="button" id="cancelBtn">Cancelar</button>
+    </div>
+  </form>
+
+  <section class="list" id="list" aria-live="polite">
+    <div class="empty">Carregando suas candidaturas…</div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  var STATUSES = [
+    { name: 'Aplicado', c: 'var(--s-aplicado)' },
+    { name: 'Em análise', c: 'var(--s-analise)' },
+    { name: 'Entrevista', c: 'var(--s-entrevista)' },
+    { name: 'Teste / Case', c: 'var(--s-teste)' },
+    { name: 'Oferta', c: 'var(--s-oferta)' },
+    { name: 'Recusado', c: 'var(--s-recusado)' },
+    { name: 'Desisti', c: 'var(--s-desisti)' }
+  ];
+  var FIELDS = ['company', 'role', 'status', 'salary', 'bussolaScore', 'nextSteps', 'jobDescription', 'companyDescription'];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var db = null, col = null;
+  var apps = [], loaded = false, failed = false;
+  var filter = '', armedDelete = null, editingId = null;
+
+  function colorOf(name) {
+    for (var i = 0; i < STATUSES.length; i++) if (STATUSES[i].name === name) return STATUSES[i].c;
+    return 'var(--s-aplicado)';
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function hasScore(a) { return typeof a.bussolaScore === 'number' && !isNaN(a.bussolaScore); }
+  function fmtScore(n) { return n.toFixed(2).replace('.', ','); }
+  function fmtDate(iso) { try { return new Date(iso).toLocaleDateString('pt-BR'); } catch (e) { return ''; } }
+
+  var toastTimer;
+  function toast(msg) {
+    $('toast').textContent = msg;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $('toast').hidden = true; }, 3500);
+  }
+
+  STATUSES.forEach(function (s) { $('status').add(new Option(s.name, s.name)); });
+
+  function renderPipeline() {
+    var html = '<button type="button" class="stage" style="--c:var(--accent)" data-stage="" aria-pressed="' + (filter === '') + '">' +
+      '<span class="n">' + apps.length + '</span><span class="l">Todas</span></button>';
+    STATUSES.forEach(function (s) {
+      var n = apps.filter(function (a) { return a.status === s.name; }).length;
+      html += '<button type="button" class="stage" style="--c:' + s.c + '" data-stage="' + esc(s.name) + '" aria-pressed="' + (filter === s.name) + '">' +
+        '<span class="n">' + n + '</span><span class="l">' + esc(s.name) + '</span></button>';
+    });
+    $('pipeline').innerHTML = html;
+  }
+
+  function sorted(list) {
+    var mode = $('sort').value;
+    return list.slice().sort(function (a, b) {
+      if (mode === 'score') return (hasScore(b) ? b.bussolaScore : -1) - (hasScore(a) ? a.bussolaScore : -1);
+      if (mode === 'company') return String(a.company).localeCompare(String(b.company), 'pt-BR');
+      return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+    });
+  }
+
+  function cardHTML(a) {
+    var facts = '';
+    if (a.salary) facts += '<div class="salary"><span class="fact-label">Remuneração</span>' + esc(a.salary) + '</div>';
+    if (hasScore(a)) {
+      var pct = Math.max(0, Math.min(100, a.bussolaScore / 5 * 100));
+      facts += '<div><span class="fact-label">Bússola de Carreira</span><span class="score">' +
+        '<span class="score-track"><span class="score-fill" style="display:block;width:' + pct.toFixed(1) + '%"></span></span>' +
+        '<span class="score-num">' + fmtScore(a.bussolaScore) + ' / 5</span></span></div>';
+    }
+    var armed = armedDelete === a.id;
+    return '<article class="card" style="--c:' + colorOf(a.status) + '">' +
+      '<div class="card-head"><div><div class="company">' + esc(a.company) + '</div><div class="role">' + esc(a.role) + '</div></div>' +
+      '<span class="pill">' + esc(a.status) + '</span></div>' +
+      (facts ? '<div class="facts">' + facts + '</div>' : '') +
+      (a.nextSteps ? '<div class="next"><b>Próximos passos:</b> ' + esc(a.nextSteps) + '</div>' : '') +
+      (a.jobDescription ? '<details><summary>Descrição da vaga</summary><p>' + esc(a.jobDescription) + '</p></details>' : '') +
+      (a.companyDescription ? '<details><summary>Sobre a empresa</summary><p>' + esc(a.companyDescription) + '</p></details>' : '') +
+      '<div class="card-foot"><span>Cadastrada em ' + fmtDate(a.createdAt) + ' · atualizada em ' + fmtDate(a.updatedAt) + '</span>' +
+      '<span class="actions">' +
+        '<button type="button" class="btn small" data-edit="' + esc(a.id) + '">Editar</button>' +
+        '<button type="button" class="btn small danger' + (armed ? ' armed' : '') + '" data-delete="' + esc(a.id) + '">' + (armed ? 'Confirmar exclusão' : 'Excluir') + '</button>' +
+      '</span></div></article>';
+  }
+
+  function render() {
+    renderPipeline();
+    if (failed) {
+      $('list').innerHTML = '<div class="empty">Não foi possível acessar os dados salvos. Abra esta página pelo claude.ai, com sua conta conectada.</div>';
+      return;
+    }
+    if (!loaded) return;
+    var visible = sorted(apps.filter(function (a) { return !filter || a.status === filter; }));
+    if (!visible.length) {
+      $('list').innerHTML = '<div class="empty">' + (apps.length
+        ? 'Nenhuma candidatura na etapa “' + esc(filter) + '”.'
+        : 'Nenhuma candidatura ainda. Clique em “+ Nova candidatura” para registrar a primeira.') + '</div>';
+      return;
+    }
+    $('list').innerHTML = visible.map(cardHTML).join('');
+  }
+
+  function openForm(a) {
+    editingId = a ? a.id : null;
+    $('formTitle').textContent = a ? 'Editar candidatura' : 'Nova candidatura';
+    $('submitBtn').textContent = a ? 'Salvar alterações' : 'Adicionar';
+    FIELDS.forEach(function (f) {
+      var v = a ? a[f] : '';
+      $(f).value = (v == null) ? '' : v;
+    });
+    if (!a) $('status').value = STATUSES[0].name;
+    $('form').hidden = false;
+    $('company').focus();
+    $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function closeForm() { $('form').hidden = true; editingId = null; $('form').reset(); }
+
+  function readForm() {
+    var score = $('bussolaScore').value;
+    return {
+      company: $('company').value.trim(),
+      role: $('role').value.trim(),
+      status: $('status').value,
+      salary: $('salary').value.trim(),
+      bussolaScore: score === '' ? null : Number(score),
+      nextSteps: $('nextSteps').value.trim(),
+      jobDescription: $('jobDescription').value.trim(),
+      companyDescription: $('companyDescription').value.trim()
+    };
+  }
+
+  function writeError(e) {
+    var code = e && e.code;
+    if (code === 'quota_exceeded') toast('Limite de armazenamento atingido. Exclua candidaturas antigas.');
+    else if (code === 'invalid_argument') toast('Você não tem permissão para alterar esta lista.');
+    else toast('Não foi possível salvar. Tente de novo em instantes.');
+  }
+
+  $('newBtn').addEventListener('click', function () { openForm(null); });
+  $('cancelBtn').addEventListener('click', closeForm);
+  $('sort').addEventListener('change', render);
+
+  $('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!col) { toast('Os dados ainda não carregaram.'); return; }
+    var data = readForm();
+    var now = new Date().toISOString();
+    var p;
+    if (editingId) {
+      data.updatedAt = now;
+      p = col.doc(editingId).update(data);
+    } else {
+      data.createdAt = now;
+      data.updatedAt = now;
+      p = col.doc().set(data);
+    }
+    var wasEditing = !!editingId;
+    $('submitBtn').disabled = true;
+    p.then(function () { closeForm(); toast(wasEditing ? 'Alterações salvas.' : 'Candidatura adicionada.'); })
+     .catch(writeError)
+     .then(function () { $('submitBtn').disabled = false; });
+  });
+
+  $('pipeline').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-stage]');
+    if (!b) return;
+    var s = b.getAttribute('data-stage');
+    filter = (filter === s) ? '' : s;
+    render();
+  });
+
+  $('list').addEventListener('click', function (e) {
+    var ed = e.target.closest('[data-edit]');
+    var del = e.target.closest('[data-delete]');
+    if (ed) {
+      var id = ed.getAttribute('data-edit');
+      openForm(apps.filter(function (a) { return a.id === id; })[0]);
+    }
+    if (del) {
+      var did = del.getAttribute('data-delete');
+      if (armedDelete !== did) { armedDelete = did; render(); return; }
+      armedDelete = null;
+      col.doc(did).delete().then(function () { toast('Candidatura excluída.'); }).catch(writeError);
+    }
+  });
+  document.addEventListener('click', function (e) {
+    if (armedDelete && !e.target.closest('[data-delete]')) { armedDelete = null; render(); }
+  });
+
+  // Importa o backup .json do app local. Nunca apaga nada:
+  // mesma empresa só preenche campos vazios; empresa nova é adicionada.
+  $('importBtn').addEventListener('click', function () { $('importFile').click(); });
+  $('importFile').addEventListener('change', function (e) {
+    var file = e.target.files[0];
+    e.target.value = '';
+    if (!file || !col) return;
+    file.text().then(function (txt) {
+      var items = JSON.parse(txt);
+      if (!Array.isArray(items)) throw new Error('formato');
+      return importItems(items);
+    }).then(function (r) {
+      toast('Importação concluída: ' + r.added + ' nova(s), ' + r.updated + ' atualizada(s).');
+    }).catch(function (err) {
+      if (err && err.code) writeError(err); else toast('Arquivo inválido. Use o backup exportado pelo app.');
+    });
+  });
+
+  function norm(s) { return String(s || '').trim().toLowerCase(); }
+  async function importItems(items) {
+    var added = 0, updated = 0;
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (!it || !it.company) continue;
+      var clean = {};
+      FIELDS.forEach(function (f) { if (it[f] !== undefined && it[f] !== '' && it[f] !== null) clean[f] = it[f]; });
+      if (clean.bussolaScore !== undefined) clean.bussolaScore = Number(clean.bussolaScore);
+      var match = apps.filter(function (a) { return norm(a.company) === norm(it.company); })[0];
+      if (match) {
+        var patch = {};
+        Object.keys(clean).forEach(function (k) {
+          var cur = match[k];
+          if (cur === undefined || cur === null || cur === '') patch[k] = clean[k];
+        });
+        if (Object.keys(patch).length) {
+          patch.updatedAt = new Date().toISOString();
+          await col.doc(match.id).update(patch);
+          updated++;
+        }
+      } else {
+        var now = new Date().toISOString();
+        var doc = Object.assign({ role: '', status: STATUSES[0].name, nextSteps: '' }, clean, {
+          createdAt: it.createdAt || now, updatedAt: it.updatedAt || now
+        });
+        await col.doc().set(doc);
+        apps.push(Object.assign({ id: '_pending' + i }, doc));
+        added++;
+      }
+    }
+    return { added: added, updated: updated };
+  }
+
+  render();
+
+  var useDb = (window.claude && window.claude.use) ? window.claude.use('db') : Promise.resolve(null);
+  useDb.then(function (d) {
+    if (!d) { failed = true; render(); return; }
+    db = d;
+    col = db.collection('candidaturas');
+    col.onSnapshot(function (snap) {
+      apps = snap.docs.map(function (s) { return Object.assign({ id: s.id }, s.data()); });
+      loaded = true;
+      render();
+    }, function () { failed = true; render(); });
+  });
+})();
+</script>
