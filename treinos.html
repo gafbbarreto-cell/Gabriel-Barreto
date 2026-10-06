@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meus Treinos</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1f2328;
+      --muted: #656d76;
+      --border: #d0d7de;
+      --accent: #2563eb;
+      --danger: #dc2626;
+      --done: #16a34a;
+      --late: #d97706;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --card: #161b22;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --border: #30363d;
+        --accent: #4f8cff;
+        --danger: #f87171;
+        --done: #4ade80;
+        --late: #fbbf24;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.4;
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    h2 { margin: 0 0 12px; font-size: 1.1rem; }
+    .subtitle { margin: 0 0 24px; color: var(--muted); }
+    nav { margin-bottom: 16px; font-size: .9rem; }
+    nav a { color: var(--accent); }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--muted); }
+    input, select, textarea {
+      font: inherit;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-width: 0;
+    }
+    textarea { resize: vertical; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+    button {
+      font: inherit;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.danger { color: var(--danger); }
+    button.small { padding: 4px 10px; font-size: .85rem; }
+
+    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .toolbar .spacer { flex: 1; }
+    .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .chip {
+      font-size: .8rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+    .chip.ok { border-color: var(--done); }
+
+    .progress { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; margin-bottom: 12px; }
+    .progress > div { height: 100%; background: var(--done); transition: width .2s; }
+
+    .week-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .week-title { font-weight: 600; font-size: 1.15rem; }
+
+    .days { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+    .day {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .day-name { font-weight: 600; font-size: .9rem; }
+    .day-name small { color: var(--muted); font-weight: 400; }
+
+    .workout { display: flex; align-items: center; gap: 6px; font-size: .9rem; }
+    .workout input[type=checkbox] { width: 18px; height: 18px; flex: none; accent-color: var(--done); }
+    .workout span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .workout.done span { text-decoration: line-through; color: var(--muted); }
+    .workout.late span { color: var(--late); }
+    .workout .x { border: none; background: none; padding: 0 4px; color: var(--muted); font-size: 1rem; }
+    .add-row { display: flex; gap: 4px; margin-top: auto; }
+    .add-row input { flex: 1; padding: 4px 8px; font-size: .85rem; }
+    .add-row button { padding: 4px 8px; }
+
+    .pending { display: grid; gap: 6px; }
+    .pending .group { font-size: .8rem; color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .04em; }
+    .empty { text-align: center; color: var(--muted); padding: 20px 0; }
+
+    .new-week { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end; }
+
+    .ideal { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+
+    details > summary { cursor: pointer; font-weight: 600; }
+    .history { display: grid; gap: 10px; margin-top: 12px; }
+    .hist-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+    .hist-item summary { font-weight: 500; }
+    table { border-collapse: collapse; width: 100%; font-size: .85rem; margin-top: 8px; }
+    .table-wrap { overflow-x: auto; }
+    th, td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 500; }
+  </style>
+</head>
+<body>
+<main>
+  <nav><a href="index.html">← Minhas Candidaturas</a></nav>
+  <h1>Meus Treinos</h1>
+  <p class="subtitle">Monte a semana, dê check no que fez, veja o que falta e feche a semana para planejar a próxima.</p>
+
+  <!-- Semana atual -->
+  <section class="panel" id="currentPanel"></section>
+
+  <!-- Pendentes -->
+  <section class="panel" id="pendingPanel"></section>
+
+  <!-- Montar nova semana (aparece quando não há semana aberta) -->
+  <section class="panel" id="newWeekPanel" hidden>
+    <h2>Montar a próxima semana</h2>
+    <div class="new-week">
+      <label>Segunda-feira da semana
+        <input type="date" id="newStart">
+      </label>
+      <label>Começar a partir de
+        <select id="newMode">
+          <option value="ideal">Semana Ideal</option>
+          <option value="last">Repetir a última semana</option>
+          <option value="blank">Semana em branco</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button type="button" class="primary" id="createWeekBtn">Criar semana</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Semana Ideal -->
+  <section class="panel">
+    <details id="idealDetails">
+      <summary>Semana Ideal (modelo)</summary>
+      <p class="subtitle" style="margin:8px 0 12px">Um treino por linha. Usada como ponto de partida ao montar uma nova semana.</p>
+      <div class="ideal" id="ideal"></div>
+      <div class="actions" style="margin-top:12px">
+        <button type="button" class="primary small" id="saveIdealBtn">Salvar Semana Ideal</button>
+      </div>
+    </details>
+  </section>
+
+  <!-- Histórico -->
+  <section class="panel">
+    <details id="historyDetails">
+      <summary>Semanas concluídas</summary>
+      <div class="history" id="history"></div>
+    </details>
+  </section>
+
+  <div class="toolbar">
+    <div class="spacer"></div>
+    <button type="button" class="small" id="exportBtn">Exportar backup</button>
+    <button type="button" class="small" id="importBtn">Importar backup</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div>
+</main>
+
+<script>
+  const STORAGE_KEY = 'treinos.v1';
+  const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+  const CATEGORIES = [
+    { name: 'Academia', test: /academia|gym|push|pull|legs|muscula/i },
+    { name: 'Tênis',    test: /t[êe]nis|tennis/i },
+    { name: 'Aeróbico', test: /corrida|run|bike|bicicleta|nata[çc][ãa]o|swim|aer[óo]b|cardio/i },
+  ];
+  const categoryOf = name => (CATEGORIES.find(c => c.test.test(name)) || { name: 'Outros' }).name;
+
+  const $ = id => document.getElementById(id);
+  const uid = () => crypto.randomUUID();
+
+  // ---------- datas (sempre em horário local, formato AAAA-MM-DD) ----------
+  const toISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const fromISO = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const addDays = (iso, n) => { const d = fromISO(iso); d.setDate(d.getDate() + n); return toISO(d); };
+  const mondayOf = date => { const d = new Date(date); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return toISO(d); };
+  const ddmm = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  const todayISO = () => toISO(new Date());
+
+  // ---------- dados ----------
+  // Dados iniciais tirados da aba "Treinos" da planilha Sports.
+  function seed() {
+    const mk = (day, name, done = false) => ({ id: uid(), day, name, done });
+    return {
+      ideal: [
+        ['Academia Legs', 'Corrida Leve'],
+        ['Tênis Treino'],
+        ['Academia Push', 'Corrida Longa'],
+        ['Tênis Aula'],
+        ['Academia Pull', 'Corrida Rápida'],
+        ['Tênis Jogos'],
+        ['Academia Opcional'],
+      ],
+      current: {
+        start: '2026-10-05',
+        items: [
+          mk(0, 'Academia Push', true), mk(1, 'Academia Legs'), mk(2, 'Academia Pull'), mk(3, 'Tênis Aula'),
+          mk(4, 'Academia Push'), mk(5, 'Academia Pull'), mk(6, 'Academia Opcional'),
+        ],
+      },
+      history: [{
+        start: '2026-09-28',
+        closedAt: '2026-10-04T23:59:00.000Z',
+        items: [
+          mk(0, 'Academia Pull', true), mk(1, 'Academia Legs', true), mk(2, 'Academia Push', true), mk(2, 'Tênis Jogo', true),
+          mk(3, 'Academia Pull', true), mk(4, 'Tênis Jogo', true), mk(5, 'Academia Push', true), mk(6, 'Academia Pull', true),
+        ],
+      }],
+    };
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return seed();
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch { alert('Não foi possível salvar no navegador. Use "Exportar backup" para não perder os dados.'); }
+  }
+
+  let state = load();
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ---------- resumo ----------
+  function stats(items) {
+    const total = items.length, done = items.filter(i => i.done).length;
+    const byCat = {};
+    for (const i of items) {
+      const c = categoryOf(i.name);
+      byCat[c] = byCat[c] || { done: 0, total: 0 };
+      byCat[c].total++;
+      if (i.done) byCat[c].done++;
+    }
+    return { total, done, byCat };
+  }
+  function chipsHtml(items) {
+    const s = stats(items);
+    return `<span class="chip ${s.total && s.done === s.total ? 'ok' : ''}">Feitos: ${s.done} / ${s.total}</span>` +
+      Object.entries(s.byCat).map(([c, v]) =>
+        `<span class="chip ${v.done === v.total ? 'ok' : ''}">${c}: ${v.done} / ${v.total}</span>`).join('');
+  }
+
+  // Texto separado por tabulação no mesmo formato da aba Treinos (cole na planilha).
+  function sheetText(week) {
+    const rows = [['Semana ' + ddmm(week.start), ...DAYS]];
+    const perDay = DAYS.map((_, d) => week.items.filter(i => i.day === d));
+    const n = Math.max(2, ...perDay.map(l => l.length));
+    for (let r = 0; r < n; r++) {
+      rows.push([`Treino ${r + 1}`, ...perDay.map(l => l[r] ? l[r].name + (l[r].done ? ' 👊🏻' : '') : '')]);
+    }
+    return rows.map(r => r.join('\t')).join('\n');
+  }
+  async function copySheet(week) {
+    try {
+      await navigator.clipboard.writeText(sheetText(week));
+      alert('Copiado! Cole na aba Treinos da planilha.');
+    } catch {
+      prompt('Copie o texto abaixo:', sheetText(week));
+    }
+  }
+
+  // ---------- render ----------
+  function workoutHtml(i, { late = false, removable = true } = {}) {
+    return `<div class="workout ${i.done ? 'done' : ''} ${late ? 'late' : ''}">
+      <input type="checkbox" data-toggle="${i.id}" ${i.done ? 'checked' : ''} aria-label="Concluído">
+      <span>${escapeHtml(i.name)}${i.done ? ' 👊🏻' : ''}</span>
+      ${removable ? `<button class="x" data-remove="${i.id}" title="Remover">×</button>` : ''}
+    </div>`;
+  }
+
+  function renderCurrent() {
+    const panel = $('currentPanel');
+    const week = state.current;
+    if (!week) {
+      panel.innerHTML = `<div class="empty">Nenhuma semana em andamento. Monte a próxima abaixo.</div>`;
+      return;
+    }
+    const today = todayISO();
+    const s = stats(week.items);
+    const pct = s.total ? Math.round(100 * s.done / s.total) : 0;
+    panel.innerHTML = `
+      <div class="week-head">
+        <div class="week-title">Semana ${ddmm(week.start)} – ${ddmm(addDays(week.start, 6))}</div>
+        <div class="actions">
+          <button class="small" id="copyCurrentBtn">Copiar para a planilha</button>
+          <button class="small primary" id="closeWeekBtn">Concluir semana</button>
+        </div>
+      </div>
+      <div class="summary" style="margin-top:10px">${chipsHtml(week.items)}</div>
+      <div class="progress"><div style="width:${pct}%"></div></div>
+      <div class="days">
+        ${DAYS.map((name, d) => {
+          const date = addDays(week.start, d);
+          const items = week.items.filter(i => i.day === d);
+          return `<div class="day ${date === today ? 'today' : ''}">
+            <div class="day-name">${name} <small>${ddmm(date)}${date === today ? ' · hoje' : ''}</small></div>
+            ${items.map(i => workoutHtml(i, { late: !i.done && date < today })).join('')}
+            <form class="add-row" data-add="${d}">
+              <input placeholder="+ treino" aria-label="Novo treino para ${name}">
+              <button type="submit" class="small">+</button>
+            </form>
+          </div>`;
+        }).join('')}
+      </div>`;
+    $('copyCurrentBtn').onclick = () => copySheet(week);
+    $('closeWeekBtn').onclick = closeWeek;
+  }
+
+  function renderPending() {
+    const panel = $('pendingPanel');
+    const week = state.current;
+    if (!week) { panel.hidden = true; return; }
+    panel.hidden = false;
+    const today = todayISO();
+    const pending = week.items.filter(i => !i.done)
+      .sort((a, b) => a.day - b.day);
+    const dateOf = i => addDays(week.start, i.day);
+    const groups = [
+      ['Atrasados', pending.filter(i => dateOf(i) < today), true],
+      ['Hoje', pending.filter(i => dateOf(i) === today), false],
+      ['Próximos dias', pending.filter(i => dateOf(i) > today), false],
+    ].filter(([, list]) => list.length);
+
+    panel.innerHTML = `<h2>O que falta fazer</h2>` + (pending.length
+      ? `<div class="pending">${groups.map(([title, list, late]) =>
+          `<div class="group">${title}</div>` +
+          list.map(i => workoutHtml({ ...i, name: `${DAYS[i.day]} · ${i.name}` }, { late, removable: false })).join('')
+        ).join('')}</div>`
+      : `<div class="empty">Tudo feito nesta semana! 👊🏻 Hora de concluir e planejar a próxima.</div>`);
+  }
+
+  function renderNewWeek() {
+    const panel = $('newWeekPanel');
+    panel.hidden = !!state.current;
+    if (state.current) return;
+    if (!$('newStart').value) {
+      const last = state.history[0];
+      $('newStart').value = last ? addDays(last.start, 7) : mondayOf(new Date());
+    }
+  }
+
+  function renderIdeal() {
+    $('ideal').innerHTML = DAYS.map((name, d) => `
+      <label>${name}
+        <textarea rows="3" data-ideal="${d}">${escapeHtml(state.ideal[d].join('\n'))}</textarea>
+      </label>`).join('');
+  }
+
+  function renderHistory() {
+    const el = $('history');
+    if (!state.history.length) {
+      el.innerHTML = `<div class="empty">Nenhuma semana concluída ainda.</div>`;
+      return;
+    }
+    el.innerHTML = state.history.map((w, idx) => {
+      const s = stats(w.items);
+      const perDay = DAYS.map((_, d) => w.items.filter(i => i.day === d));
+      const n = Math.max(1, ...perDay.map(l => l.length));
+      const rows = Array.from({ length: n }, (_, r) =>
+        `<tr><th>Treino ${r + 1}</th>${perDay.map(l => `<td>${l[r] ? escapeHtml(l[r].name) + (l[r].done ? ' 👊🏻' : ' ✗') : ''}</td>`).join('')}</tr>`).join('');
+      return `<details class="hist-item">
+        <summary>Semana ${ddmm(w.start)} — ${s.done} / ${s.total} treinos</summary>
+        <div class="summary" style="margin-top:8px">${chipsHtml(w.items)}</div>
+        <div class="table-wrap"><table>
+          <tr><th></th>${DAYS.map(d => `<th>${d}</th>`).join('')}</tr>
+          ${rows}
+        </table></div>
+        <div class="actions" style="margin-top:8px">
+          <button class="small" data-copy-hist="${idx}">Copiar para a planilha</button>
+          ${idx === 0 && !state.current ? `<button class="small" data-reopen="${idx}">Reabrir semana</button>` : ''}
+          <button class="small danger" data-delete-hist="${idx}">Excluir</button>
+        </div>
+      </details>`;
+    }).join('');
+  }
+
+  function render() {
+    renderCurrent();
+    renderPending();
+    renderNewWeek();
+    renderHistory();
+  }
+
+  // ---------- ações ----------
+  function findItem(id) { return state.current && state.current.items.find(i => i.id === id); }
+
+  function closeWeek() {
+    const week = state.current;
+    const s = stats(week.items);
+    const pending = s.total - s.done;
+    const msg = `Concluir a semana ${ddmm(week.start)}?\n\nFeitos: ${s.done} de ${s.total}.` +
+      (pending ? `\n${pending} treino(s) não feitos ficarão registrados como não realizados.` : '');
+    if (!confirm(msg)) return;
+    state.history.unshift({ ...week, closedAt: new Date().toISOString() });
+    state.current = null;
+    $('newStart').value = addDays(week.start, 7);
+    save();
+    render();
+    $('newWeekPanel').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function createWeek() {
+    const start = $('newStart').value;
+    if (!start) { alert('Escolha a data da segunda-feira.'); return; }
+    const monday = mondayOf(fromISO(start));
+    if (state.history.some(w => w.start === monday) &&
+        !confirm(`Já existe uma semana ${ddmm(monday)} concluída. Criar mesmo assim?`)) return;
+    const mode = $('newMode').value;
+    let items = [];
+    if (mode === 'ideal') {
+      items = state.ideal.flatMap((list, day) => list.map(name => ({ id: uid(), day, name, done: false })));
+    } else if (mode === 'last' && state.history[0]) {
+      items = state.history[0].items.map(i => ({ id: uid(), day: i.day, name: i.name, done: false }));
+    }
+    state.current = { start: monday, items };
+    $('newStart').value = '';
+    save();
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.addEventListener('change', e => {
+    const id = e.target.dataset.toggle;
+    if (!id) return;
+    const item = findItem(id);
+    if (item) { item.done = e.target.checked; save(); render(); }
+  });
+
+  document.addEventListener('submit', e => {
+    const day = e.target.dataset.add;
+    if (day === undefined) return;
+    e.preventDefault();
+    const input = e.target.querySelector('input');
+    const name = input.value.trim();
+    if (!name) return;
+    state.current.items.push({ id: uid(), day: Number(day), name, done: false });
+    save();
+    render();
+    // mantém o foco no mesmo dia para adicionar vários treinos seguidos
+    const again = document.querySelector(`form[data-add="${day}"] input`);
+    if (again) again.focus();
+  });
+
+  document.addEventListener('click', e => {
+    const t = e.target.dataset;
+    if (t.remove) {
+      state.current.items = state.current.items.filter(i => i.id !== t.remove);
+      save(); render();
+    }
+    if (t.copyHist) copySheet(state.history[Number(t.copyHist)]);
+    if (t.reopen) {
+      const [w] = state.history.splice(Number(t.reopen), 1);
+      delete w.closedAt;
+      state.current = w;
+      save(); render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (t.deleteHist) {
+      const w = state.history[Number(t.deleteHist)];
+      if (confirm(`Excluir a semana ${ddmm(w.start)} do histórico?`)) {
+        state.history.splice(Number(t.deleteHist), 1);
+        save(); render();
+      }
+    }
+  });
+
+  $('createWeekBtn').addEventListener('click', createWeek);
+
+  $('saveIdealBtn').addEventListener('click', () => {
+    state.ideal = DAYS.map((_, d) =>
+      document.querySelector(`[data-ideal="${d}"]`).value.split('\n').map(s => s.trim()).filter(Boolean));
+    save();
+    renderIdeal();
+    alert('Semana Ideal salva.');
+  });
+
+  $('exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `treinos-${todayISO()}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+
+  $('importBtn').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data || !Array.isArray(data.ideal) || !Array.isArray(data.history)) throw new Error();
+      if (confirm('Importar este backup? Ele substitui a semana atual, a Semana Ideal e o histórico deste navegador.')) {
+        state = data;
+        save();
+        renderIdeal();
+        render();
+      }
+    } catch {
+      alert('Arquivo inválido.');
+    }
+    e.target.value = '';
+  });
+
+  renderIdeal();
+  render();
+</script>
+</body>
+</html>
