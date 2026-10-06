@@ -49,4 +49,4 @@ Versão da aba **Treinos** da planilha Sports para acompanhar os treinos da sema
 - **Semana Ideal:** edite o modelo (um treino por linha em cada dia).
 - **Copiar para a planilha:** copia a semana no mesmo formato da aba Treinos (Semana dd/mm, Treino 1, Treino 2, com 👊🏻) para colar no Excel/Sheets.
 
-Na primeira vez a página já vem com a Semana Ideal e as semanas 28/09 e 05/10 da planilha. Os dados ficam no navegador, como nas candidaturas: use **Exportar/Importar backup** para não perder ou levar para outro aparelho.
+Na primeira vez a página já vem com a Semana Ideal e as semanas 28/09 e 05/10 da planilha. Os dados ficam no navegador, como nas candidaturas. Para não perder ou levar para outro aparelho, use **Copiar backup** (copia um texto para guardar numa nota ou e-mail) e **Colar backup** para restaurar, ou **Exportar/Importar backup** com arquivo `.json`.
