@@ -16,9 +16,11 @@
     --danger: #B23A3A;
     --s-aplicado: #6B7A74;
     --s-analise: #2F6FB3;
-    --s-entrevista: #7A4FB0;
-    --s-teste: #B7791F;
-    --s-oferta: #2E8A4E;
+    --s-recruiter: #5B5FC7;
+    --s-hm: #7A4FB0;
+    --s-final: #A04595;
+    --s-offer: #B7791F;
+    --s-aceito: #2E8A4E;
     --s-recusado: #B23A3A;
     --s-desisti: #4F5B57;
     --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
@@ -40,9 +42,11 @@
       --danger: #E58080;
       --s-aplicado: #93A29C;
       --s-analise: #6FA8E6;
-      --s-entrevista: #B392E0;
-      --s-teste: #E0AC5A;
-      --s-oferta: #6CC98D;
+      --s-recruiter: #9A9DF0;
+      --s-hm: #B392E0;
+      --s-final: #DA8CCB;
+      --s-offer: #E0AC5A;
+      --s-aceito: #6CC98D;
       --s-recusado: #E58080;
       --s-desisti: #8C9893;
       color-scheme: dark;
@@ -62,9 +66,11 @@
     --danger: #E58080;
     --s-aplicado: #93A29C;
     --s-analise: #6FA8E6;
-    --s-entrevista: #B392E0;
-    --s-teste: #E0AC5A;
-    --s-oferta: #6CC98D;
+    --s-recruiter: #9A9DF0;
+    --s-hm: #B392E0;
+    --s-final: #DA8CCB;
+    --s-offer: #E0AC5A;
+    --s-aceito: #6CC98D;
     --s-recusado: #E58080;
     --s-desisti: #8C9893;
     color-scheme: dark;
@@ -271,9 +277,11 @@
   var STATUSES = [
     { name: 'Aplicado', c: 'var(--s-aplicado)' },
     { name: 'Em análise', c: 'var(--s-analise)' },
-    { name: 'Entrevista', c: 'var(--s-entrevista)' },
-    { name: 'Teste / Case', c: 'var(--s-teste)' },
-    { name: 'Oferta', c: 'var(--s-oferta)' },
+    { name: 'Entrevista Recruiter', c: 'var(--s-recruiter)' },
+    { name: 'Entrevista Hiring Manager', c: 'var(--s-hm)' },
+    { name: 'Entrevista Final', c: 'var(--s-final)' },
+    { name: 'Offer', c: 'var(--s-offer)' },
+    { name: 'Aceito', c: 'var(--s-aceito)' },
     { name: 'Recusado', c: 'var(--s-recusado)' },
     { name: 'Desisti', c: 'var(--s-desisti)' }
   ];
@@ -307,9 +315,12 @@
 
   STATUSES.forEach(function (s) { $('status').add(new Option(s.name, s.name)); });
 
-  // As 5 primeiras etapas formam o funil; Recusado e Desisti são saídas.
-  var FLOW = STATUSES.slice(0, 5), EXITS = STATUSES.slice(5);
-  var WIDTHS = [100, 90, 80, 70, 60];
+  // As 7 primeiras etapas formam o funil; Recusado e Desisti são saídas.
+  var FLOW = STATUSES.slice(0, 7), EXITS = STATUSES.slice(7);
+  var WIDTHS = FLOW.map(function (_, k) { return 100 - k * 8; });
+  // Nomes de etapas antigas (e do app local) convertidos para as etapas atuais.
+  var LEGACY = { 'Entrevista': 'Entrevista Recruiter', 'Teste / Case': 'Entrevista Final', 'Oferta': 'Offer' };
+  function normStatus(name) { return LEGACY[name] || name; }
   function flowIndex(name) {
     for (var i = 0; i < FLOW.length; i++) if (FLOW[i].name === name) return i;
     return -1;
@@ -538,6 +549,7 @@
       var clean = {};
       FIELDS.forEach(function (f) { if (it[f] !== undefined && it[f] !== '' && it[f] !== null) clean[f] = it[f]; });
       if (clean.bussolaScore !== undefined) clean.bussolaScore = Number(clean.bussolaScore);
+      if (clean.status !== undefined) clean.status = normStatus(clean.status);
       var match = apps.filter(function (a) { return norm(a.company) === norm(it.company); })[0];
       if (match) {
         var patch = {};
@@ -571,7 +583,11 @@
     db = d;
     col = db.collection('candidaturas');
     col.onSnapshot(function (snap) {
-      apps = snap.docs.map(function (s) { return Object.assign({ id: s.id }, s.data()); });
+      apps = snap.docs.map(function (s) {
+        var a = Object.assign({ id: s.id }, s.data());
+        a.status = normStatus(a.status);
+        return a;
+      });
       loaded = true;
       render();
     }, function () { failed = true; render(); });
