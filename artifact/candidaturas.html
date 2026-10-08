@@ -87,20 +87,50 @@
   button { cursor: pointer; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* Pipeline */
-  .pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 8px; }
-  .stage {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 10px 12px;
-    text-align: left;
-    display: flex; flex-direction: column; gap: 2px;
-    border-top: 3px solid var(--c);
+  /* Funil */
+  .funnel-wrap { display: flex; flex-direction: column; gap: 14px; }
+  .funnel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .funnel-head h2 { font-size: 20px; font-weight: 500; }
+  .funnel { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .band {
+    background: color-mix(in srgb, var(--c) 16%, var(--surface));
+    min-height: 74px;
+    padding-block: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    text-align: center;
+    min-width: 0;
   }
-  .stage[aria-pressed="true"] { background: var(--surface-2); border-color: var(--c); }
-  .stage .n { font-family: var(--font-mono); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
-  .stage .l { font-size: 13px; color: var(--ink-soft); }
+  .band.active { background: color-mix(in srgb, var(--c) 32%, var(--surface)); }
+  .band-title {
+    border: 0; background: none; padding: 0;
+    display: flex; align-items: baseline; justify-content: center; gap: 8px; flex-wrap: wrap;
+    color: var(--ink);
+  }
+  .band-name { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: var(--c); }
+  .band-n { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+  .chip {
+    border: 1px solid var(--c);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 1px 10px;
+    font-size: 13px; font-weight: 600;
+    max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .chip:hover { background: var(--surface-2); }
+  .band-empty { font-size: 12px; color: var(--ink-faint); }
+  .exits { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+  .exit {
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .exit.active { border-style: solid; border-color: var(--c); }
+  .exits-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); }
+  .card.flash { outline: 2px solid var(--c); outline-offset: 2px; }
 
   /* Toolbar */
   .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -187,7 +217,15 @@
     <p class="lede">Empresas, vagas, status e próximos passos de cada processo seletivo, com a nota de cada vaga no Bússola de Carreira.</p>
   </header>
 
-  <nav class="pipeline" id="pipeline" aria-label="Filtrar por etapa"></nav>
+  <section class="funnel-wrap" id="pipeline" aria-label="Funil de candidaturas">
+    <div class="funnel-head">
+      <h2>Funil de candidaturas</h2>
+      <button type="button" class="btn small" id="showAll" data-stage="">Mostrar todas</button>
+    </div>
+    <div class="funnel" id="funnel"></div>
+    <div class="exits-label">Saíram do funil</div>
+    <div class="exits" id="exits"></div>
+  </section>
 
   <div class="toolbar">
     <button class="btn primary" id="newBtn" type="button">+ Nova candidatura</button>
@@ -269,15 +307,56 @@
 
   STATUSES.forEach(function (s) { $('status').add(new Option(s.name, s.name)); });
 
+  // As 5 primeiras etapas formam o funil; Recusado e Desisti são saídas.
+  var FLOW = STATUSES.slice(0, 5), EXITS = STATUSES.slice(5);
+  var WIDTHS = [100, 90, 80, 70, 60];
+  function flowIndex(name) {
+    for (var i = 0; i < FLOW.length; i++) if (FLOW[i].name === name) return i;
+    return -1;
+  }
+  function chipsHTML(list) {
+    return list.map(function (a) {
+      return '<button type="button" class="chip" data-jump="' + esc(a.id) + '" title="' + esc(a.company + ' · ' + a.role) + '">' + esc(a.company) + '</button>';
+    }).join('');
+  }
+
   function renderPipeline() {
-    var html = '<button type="button" class="stage" style="--c:var(--accent)" data-stage="" aria-pressed="' + (filter === '') + '">' +
-      '<span class="n">' + apps.length + '</span><span class="l">Todas</span></button>';
-    STATUSES.forEach(function (s) {
-      var n = apps.filter(function (a) { return a.status === s.name; }).length;
-      html += '<button type="button" class="stage" style="--c:' + s.c + '" data-stage="' + esc(s.name) + '" aria-pressed="' + (filter === s.name) + '">' +
-        '<span class="n">' + n + '</span><span class="l">' + esc(s.name) + '</span></button>';
+    var active = apps.filter(function (a) { return flowIndex(a.status) >= 0; });
+    // Quem está numa etapa mais adiante já passou pelas anteriores.
+    var reached = FLOW.map(function (_, k) {
+      return active.filter(function (a) { return flowIndex(a.status) >= k; }).length;
     });
-    $('pipeline').innerHTML = html;
+    var html = '';
+    FLOW.forEach(function (s, k) {
+      var w = WIDTHS[k];
+      var next = k < FLOW.length - 1 ? WIDTHS[k + 1] : w - 8;
+      var slope = (w - next) / 2;              // % da largura do funil, de cada lado
+      var inset = slope / w * 100;             // mesmo recuo, em % da faixa
+      var here = active.filter(function (a) { return a.status === s.name; });
+      var conv = (k > 0 && reached[k - 1] > 0) ? Math.round(reached[k] / reached[k - 1] * 100) + '%' : '';
+      html += '<div class="band' + (filter === s.name ? ' active' : '') + '" style="--c:' + s.c + ';width:' + w + '%;' +
+        'clip-path:polygon(0 0,100% 0,' + (100 - inset).toFixed(2) + '% 100%,' + inset.toFixed(2) + '% 100%);' +
+        'padding-inline:calc(' + slope.toFixed(2) + '% + 12px)">' +
+        '<button type="button" class="band-title" data-stage="' + esc(s.name) + '" aria-pressed="' + (filter === s.name) + '" title="Quantas candidaturas chegaram a esta etapa' + (conv ? ' e que % da etapa anterior avançou' : '') + '">' +
+          '<span class="band-name">' + esc(s.name) + '</span>' +
+          '<span class="band-n">' + reached[k] + (reached[k] === 1 ? ' chegou' : ' chegaram') + (conv ? ' · ' + conv : '') + '</span>' +
+        '</button>' +
+        (here.length ? '<div class="chips">' + chipsHTML(here) + '</div>' : '<span class="band-empty">ninguém nesta etapa agora</span>') +
+      '</div>';
+    });
+    $('funnel').innerHTML = html;
+
+    $('exits').innerHTML = EXITS.map(function (s) {
+      var here = apps.filter(function (a) { return a.status === s.name; });
+      return '<div class="exit' + (filter === s.name ? ' active' : '') + '" style="--c:' + s.c + '">' +
+        '<button type="button" class="band-title" data-stage="' + esc(s.name) + '" aria-pressed="' + (filter === s.name) + '">' +
+          '<span class="band-name">' + esc(s.name) + '</span><span class="band-n">' + here.length + '</span></button>' +
+        (here.length ? '<div class="chips">' + chipsHTML(here) + '</div>' : '') +
+      '</div>';
+    }).join('');
+
+    $('showAll').textContent = 'Mostrar todas (' + apps.length + ')';
+    $('showAll').hidden = !filter;
   }
 
   function sorted(list) {
@@ -299,7 +378,7 @@
         '<span class="score-num">' + fmtScore(a.bussolaScore) + ' / 5</span></span></div>';
     }
     var armed = armedDelete === a.id;
-    return '<article class="card" style="--c:' + colorOf(a.status) + '">' +
+    return '<article class="card" data-card="' + esc(a.id) + '" style="--c:' + colorOf(a.status) + '">' +
       '<div class="card-head"><div><div class="company">' + esc(a.company) + '</div><div class="role">' + esc(a.role) + '</div></div>' +
       '<span class="pill">' + esc(a.status) + '</span></div>' +
       (facts ? '<div class="facts">' + facts + '</div>' : '') +
@@ -392,6 +471,21 @@
   });
 
   $('pipeline').addEventListener('click', function (e) {
+    var chip = e.target.closest('[data-jump]');
+    if (chip) {
+      var id = chip.getAttribute('data-jump');
+      var a = apps.filter(function (x) { return x.id === id; })[0];
+      if (!a) return;
+      filter = a.status;
+      render();
+      var card = document.querySelector('[data-card="' + CSS.escape(id) + '"]');
+      if (card) {
+        card.classList.add('flash');
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(function () { card.classList.remove('flash'); }, 1600);
+      }
+      return;
+    }
     var b = e.target.closest('[data-stage]');
     if (!b) return;
     var s = b.getAttribute('data-stage');
