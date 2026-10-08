@@ -92,8 +92,7 @@
 
   /* Funil */
   .funnel-wrap { display: flex; flex-direction: column; gap: 14px; }
-  .funnel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-  .funnel-head h2 { font-size: 20px; font-weight: 500; }
+  .funnel-head { display: flex; justify-content: flex-end; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .funnel { display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .band {
     background: color-mix(in srgb, var(--c) 16%, var(--surface));
@@ -213,7 +212,6 @@
 
   <section class="funnel-wrap" id="pipeline" aria-label="Funil de candidaturas">
     <div class="funnel-head">
-      <h2>Funil de candidaturas</h2>
       <button type="button" class="btn small" id="showAll" data-stage="">Mostrar todas</button>
     </div>
     <div class="funnel" id="funnel"></div>
