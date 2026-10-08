@@ -127,15 +127,6 @@
   }
   .chip:hover { background: var(--surface-2); }
   .band-empty { font-size: 12px; color: var(--ink-faint); }
-  .exits { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
-  .exit {
-    border: 1px dashed var(--line);
-    border-radius: 8px;
-    padding: 8px 12px;
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  }
-  .exit.active { border-style: solid; border-color: var(--c); }
-  .exits-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); }
   .card.flash { outline: 2px solid var(--c); outline-offset: 2px; }
 
   /* Toolbar */
@@ -229,8 +220,6 @@
       <button type="button" class="btn small" id="showAll" data-stage="">Mostrar todas</button>
     </div>
     <div class="funnel" id="funnel"></div>
-    <div class="exits-label">Saíram do funil</div>
-    <div class="exits" id="exits"></div>
   </section>
 
   <div class="toolbar">
@@ -315,8 +304,8 @@
 
   STATUSES.forEach(function (s) { $('status').add(new Option(s.name, s.name)); });
 
-  // As 7 primeiras etapas formam o funil; Recusado e Desisti são saídas.
-  var FLOW = STATUSES.slice(0, 7), EXITS = STATUSES.slice(7);
+  // As 7 primeiras etapas formam o funil; Recusado e Desisti ficam fora dele.
+  var FLOW = STATUSES.slice(0, 7);
   var WIDTHS = FLOW.map(function (_, k) { return 100 - k * 8; });
   // Nomes de etapas antigas (e do app local) convertidos para as etapas atuais.
   var LEGACY = { 'Entrevista': 'Entrevista Recruiter', 'Teste / Case': 'Entrevista Final', 'Oferta': 'Offer' };
@@ -357,14 +346,6 @@
     });
     $('funnel').innerHTML = html;
 
-    $('exits').innerHTML = EXITS.map(function (s) {
-      var here = apps.filter(function (a) { return a.status === s.name; });
-      return '<div class="exit' + (filter === s.name ? ' active' : '') + '" style="--c:' + s.c + '">' +
-        '<button type="button" class="band-title" data-stage="' + esc(s.name) + '" aria-pressed="' + (filter === s.name) + '">' +
-          '<span class="band-name">' + esc(s.name) + '</span><span class="band-n">' + here.length + '</span></button>' +
-        (here.length ? '<div class="chips">' + chipsHTML(here) + '</div>' : '') +
-      '</div>';
-    }).join('');
 
     $('showAll').textContent = 'Mostrar todas (' + apps.length + ')';
     $('showAll').hidden = !filter;
