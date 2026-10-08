@@ -229,6 +229,7 @@
       <span class="import-note">Ordenar por </span>
       <select class="select" id="sort">
         <option value="updated">Última atualização</option>
+        <option value="stage">Etapa do funil</option>
         <option value="score">Nota no Bússola</option>
         <option value="company">Empresa (A–Z)</option>
       </select>
@@ -356,6 +357,8 @@
     return list.slice().sort(function (a, b) {
       if (mode === 'score') return (hasScore(b) ? b.bussolaScore : -1) - (hasScore(a) ? a.bussolaScore : -1);
       if (mode === 'company') return String(a.company).localeCompare(String(b.company), 'pt-BR');
+      // Mais avançada primeiro; Recusado e Desisti (fora do funil) por último.
+      if (mode === 'stage' && flowIndex(b.status) !== flowIndex(a.status)) return flowIndex(b.status) - flowIndex(a.status);
       return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
     });
   }
