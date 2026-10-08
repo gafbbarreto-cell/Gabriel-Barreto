@@ -91,7 +91,7 @@
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* Funil */
-  .funnel-wrap { display: flex; flex-direction: column; gap: 14px; }
+  .funnel-wrap { display: flex; flex-direction: column; gap: 8px; }
   .funnel-head { display: flex; justify-content: flex-end; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .funnel { display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .band {
@@ -343,7 +343,7 @@
 
 
     $('showAll').textContent = 'Mostrar todas (' + apps.length + ')';
-    $('showAll').hidden = !filter;
+    $('showAll').parentNode.hidden = !filter;
   }
 
   function sorted(list) {
