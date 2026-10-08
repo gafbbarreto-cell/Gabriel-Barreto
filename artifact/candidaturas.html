@@ -15,7 +15,6 @@
     --accent-soft: #DCEDE7;
     --danger: #B23A3A;
     --s-aplicado: #6B7A74;
-    --s-analise: #2F6FB3;
     --s-recruiter: #5B5FC7;
     --s-hm: #7A4FB0;
     --s-final: #A04595;
@@ -41,7 +40,6 @@
       --accent-soft: #1C3A31;
       --danger: #E58080;
       --s-aplicado: #93A29C;
-      --s-analise: #6FA8E6;
       --s-recruiter: #9A9DF0;
       --s-hm: #B392E0;
       --s-final: #DA8CCB;
@@ -65,7 +63,6 @@
     --accent-soft: #1C3A31;
     --danger: #E58080;
     --s-aplicado: #93A29C;
-    --s-analise: #6FA8E6;
     --s-recruiter: #9A9DF0;
     --s-hm: #B392E0;
     --s-final: #DA8CCB;
@@ -266,7 +263,6 @@
 (function () {
   var STATUSES = [
     { name: 'Aplicado', c: 'var(--s-aplicado)' },
-    { name: 'Em análise', c: 'var(--s-analise)' },
     { name: 'Entrevista Recruiter', c: 'var(--s-recruiter)' },
     { name: 'Entrevista Hiring Manager', c: 'var(--s-hm)' },
     { name: 'Entrevista Final', c: 'var(--s-final)' },
@@ -305,11 +301,11 @@
 
   STATUSES.forEach(function (s) { $('status').add(new Option(s.name, s.name)); });
 
-  // As 7 primeiras etapas formam o funil; Recusado e Desisti ficam fora dele.
-  var FLOW = STATUSES.slice(0, 7);
+  // As 6 primeiras etapas formam o funil; Recusado e Desisti ficam fora dele.
+  var FLOW = STATUSES.slice(0, 6);
   var WIDTHS = FLOW.map(function (_, k) { return 100 - k * 8; });
   // Nomes de etapas antigas (e do app local) convertidos para as etapas atuais.
-  var LEGACY = { 'Entrevista': 'Entrevista Recruiter', 'Teste / Case': 'Entrevista Final', 'Oferta': 'Offer' };
+  var LEGACY = { 'Em análise': 'Aplicado', 'Entrevista': 'Entrevista Recruiter', 'Teste / Case': 'Entrevista Final', 'Oferta': 'Offer' };
   function normStatus(name) { return LEGACY[name] || name; }
   function flowIndex(name) {
     for (var i = 0; i < FLOW.length; i++) if (FLOW[i].name === name) return i;
