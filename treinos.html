@@ -543,7 +543,8 @@
   // Resumo da semana: quantos treinos de cada tipo já foram realizados.
   function tallyHtml(items) {
     const s = stats(items);
-    const names = [...CATEGORIES.map(c => c.name), ...Object.keys(s.byCat).filter(n => !CATEGORIES.some(c => c.name === n))];
+    // Só os tipos que têm treino planejado nesta semana, na ordem de CATEGORIES.
+    const names = [...CATEGORIES.map(c => c.name), 'Outros'].filter(n => s.byCat[n]);
     const tile = (cls, done, label, total) =>
       `<div class="${cls}"><b>${done}</b><span>${label}</span><small>de ${total} planejado${total === 1 ? '' : 's'}</small></div>`;
     return `<div class="tally" aria-label="Treinos realizados na semana">
