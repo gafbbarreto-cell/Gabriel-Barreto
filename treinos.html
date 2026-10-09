@@ -148,6 +148,14 @@
     .table-wrap { overflow-x: auto; }
     th, td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; vertical-align: top; }
     th { color: var(--muted); font-weight: 500; }
+    .sync { margin: -14px 0 20px; font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .sync[data-state="saved"]::before { background: var(--done); }
+    .sync[data-state="saving"]::before { background: var(--accent); }
+    .sync[data-state="error"], .sync[data-state="local"] { color: var(--late); }
+    .sync[data-state="error"]::before, .sync[data-state="local"]::before { background: var(--late); }
+    .notice { border-color: var(--late); display: grid; gap: 12px; }
+    .notice p { margin: 0; }
     .overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.45);
       display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10;
@@ -175,6 +183,16 @@
   <nav><a href="index.html">← Minhas Candidaturas</a></nav>
   <h1>Meus Treinos</h1>
   <p class="subtitle">Monte a semana, dê check no que fez, veja o que falta e feche a semana para planejar a próxima.</p>
+  <p class="sync" id="sync" data-state="local">Salvo só neste navegador</p>
+
+  <!-- Treinos que ficaram salvos só neste navegador (versões antigas da página) -->
+  <section class="panel notice" id="migratePanel" hidden>
+    <p id="migrateMsg"></p>
+    <div class="actions">
+      <button type="button" class="primary small" id="migrateUseBtn">Usar os dados deste navegador</button>
+      <button type="button" class="small" id="migrateSkipBtn">Manter os da nuvem</button>
+    </div>
+  </section>
 
   <!-- Semana atual -->
   <section class="panel" id="currentPanel"></section>
@@ -297,19 +315,173 @@
     };
   }
 
-  function load() {
+  function readLocal() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return JSON.parse(raw);
     } catch {}
-    return seed();
+    return null;
   }
-  function save() {
+  function saveLocal() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
     catch { toast('Não foi possível salvar no navegador. Use "Copiar backup" para não perder os dados.'); }
   }
 
-  let state = load();
+  // Onde os dados ficam:
+  // - Publicada no Claude: no banco da própria página (doc "treinos/estado" com a Semana Ideal e a
+  //   semana atual, e um doc por semana concluída em "semanas"). Vale para qualquer aparelho.
+  // - Arquivo aberto direto no navegador: localStorage, como antes.
+  const emptyState = () => ({ ideal: DAYS.map(() => []), current: null, history: [] });
+  let state = window.claude ? emptyState() : (readLocal() || seed());
+  let cloud = null;       // { main, weeks } quando o banco está ativo
+  let loading = !!window.claude;
+
+  function setSync(kind) {
+    const text = {
+      saved: 'Salvo na nuvem · aparece em qualquer aparelho',
+      saving: 'Salvando…',
+      error: 'Não foi possível salvar. Verifique a conexão e tente de novo.',
+      local: 'Salvo só neste navegador',
+      loading: 'Carregando seus treinos…',
+    }[kind];
+    $('sync').dataset.state = kind;
+    $('sync').textContent = text;
+  }
+
+  // Gravações em fila, uma de cada vez. A gravação da semana atual lê o estado mais recente ao rodar.
+  let chain = Promise.resolve(), pendingWrites = 0, mainQueued = false, writeFailed = false;
+  async function withRetry(fn) {
+    try { return await fn(); }
+    catch (e) {
+      if (e && e.code === 'unavailable') {
+        await new Promise(res => setTimeout(res, 500 + Math.random() * 1000));
+        return fn();
+      }
+      throw e;
+    }
+  }
+  function enqueue(fn) {
+    pendingWrites++;
+    setSync('saving');
+    chain = chain.then(() => withRetry(fn)).then(
+      () => {},
+      e => {
+        writeFailed = true;
+        toast(e && e.code === 'invalid_argument'
+          ? 'Você só pode visualizar estes treinos.'
+          : 'Não foi possível salvar. Verifique a conexão e tente de novo.');
+      },
+    ).then(() => {
+      if (--pendingWrites === 0) { setSync(writeFailed ? 'error' : 'saved'); writeFailed = false; }
+    });
+  }
+  const mainBody = () => ({
+    ideal: Object.fromEntries(state.ideal.map((list, d) => ['d' + d, list])),
+    current: state.current,
+    updatedAt: new Date().toISOString(),
+  });
+  function saveMain() {
+    if (!cloud) return saveLocal();
+    if (mainQueued) return;
+    mainQueued = true;
+    enqueue(() => { mainQueued = false; return cloud.main.set(mainBody()); });
+  }
+  function putWeek(week) {
+    if (!cloud) return saveLocal();
+    const body = JSON.parse(JSON.stringify(week));
+    enqueue(() => cloud.weeks.doc(body.start).set(body));
+  }
+  function deleteWeek(start) {
+    if (!cloud) return saveLocal();
+    enqueue(() => cloud.weeks.doc(start).delete());
+  }
+  // Substitui tudo (backup importado ou dados recuperados deste navegador).
+  function replaceAll(data, previousHistory) {
+    state = data;
+    if (!cloud) return saveLocal();
+    const keep = new Set(state.history.map(w => w.start));
+    for (const w of previousHistory) if (!keep.has(w.start)) deleteWeek(w.start);
+    for (const w of state.history) putWeek(w);
+    saveMain();
+  }
+
+  async function connectCloud() {
+    setSync('loading');
+    let db = null;
+    try { db = await window.claude.use('db'); } catch {}
+    if (!db) {
+      // Sem banco nesta visualização: volta a guardar no navegador.
+      loading = false;
+      state = readLocal() || emptyState();
+      setSync('local');
+      renderIdeal();
+      render();
+      return;
+    }
+    cloud = { main: db.doc('treinos/estado'), weeks: db.collection('semanas') };
+    let gotMain = false, gotWeeks = false;
+    const ready = () => {
+      if (!gotMain || !gotWeeks) return;
+      if (loading) { loading = false; setSync('saved'); offerLocalData(); renderIdeal(); }
+      render();
+    };
+    cloud.main.onSnapshot(snap => {
+      gotMain = true;
+      if (pendingWrites && !loading) return; // não sobrescreve um check que ainda está sendo salvo
+      const d = snap.exists ? snap.data() : null;
+      const ideal = DAYS.map((_, i) => (d && d.ideal && d.ideal['d' + i]) ? [...d.ideal['d' + i]] : []);
+      const idealChanged = JSON.stringify(ideal) !== JSON.stringify(state.ideal);
+      state.ideal = ideal;
+      state.current = d && d.current ? JSON.parse(JSON.stringify(d.current)) : null;
+      if (idealChanged && !loading && !document.activeElement?.dataset?.ideal) renderIdeal();
+      ready();
+    }, onCloudError);
+    cloud.weeks.onSnapshot(qs => {
+      gotWeeks = true;
+      if (pendingWrites && !loading) return;
+      state.history = qs.docs.map(doc => JSON.parse(JSON.stringify(doc.data())))
+        .sort((a, b) => b.start.localeCompare(a.start));
+      ready();
+    }, onCloudError);
+  }
+  function onCloudError() {
+    setSync('error');
+    toast('A conexão com a nuvem caiu. Recarregue a página para continuar salvando.');
+  }
+
+  // Treinos marcados em versões antigas desta página ficaram só no navegador: oferece trazer para a nuvem.
+  const MIGRATED_KEY = 'treinos.migrado';
+  function offerLocalData() {
+    let local = null, done = false;
+    try { done = localStorage.getItem(MIGRATED_KEY) === '1'; } catch {}
+    if (!done) local = readLocal();
+    if (!local || !Array.isArray(local.history)) return;
+    const comparable = st => JSON.stringify({ ideal: st.ideal, current: st.current, history: st.history.map(w => ({ start: w.start, items: w.items })) });
+    if (comparable(local) === comparable(state)) { markMigrated(); return; }
+    const all = [...(local.current ? [local.current] : []), ...local.history];
+    const checks = all.reduce((n, w) => n + w.items.filter(i => i.done).length, 0);
+    $('migrateMsg').textContent =
+      `Encontrei treinos salvos só neste navegador` +
+      (local.current ? ` (semana atual ${ddmm(local.current.start)}` : ' (') +
+      `, ${checks} treino(s) com check). Eles são diferentes dos que estão na nuvem. Quais você quer manter?`;
+    $('migratePanel').hidden = false;
+    $('migrateUseBtn').onclick = () => {
+      // Semanas concluídas que só existem na nuvem continuam no histórico.
+      const localStarts = new Set(local.history.map(w => w.start));
+      const merged = { ...local, history: [...local.history, ...state.history.filter(w => !localStarts.has(w.start))]
+        .sort((a, b) => b.start.localeCompare(a.start)) };
+      replaceAll(merged, state.history);
+      markMigrated();
+      renderIdeal();
+      render();
+      toast('Treinos deste navegador enviados para a nuvem.');
+    };
+    $('migrateSkipBtn').onclick = markMigrated;
+  }
+  function markMigrated() {
+    try { localStorage.setItem(MIGRATED_KEY, '1'); } catch {}
+    $('migratePanel').hidden = true;
+  }
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -493,6 +665,13 @@
   }
 
   function render() {
+    if (loading) {
+      $('currentPanel').innerHTML = `<div class="empty">Carregando seus treinos…</div>`;
+      $('pendingPanel').hidden = true;
+      $('newWeekPanel').hidden = true;
+      $('history').innerHTML = '';
+      return;
+    }
     renderCurrent();
     renderPending();
     renderNewWeek();
@@ -509,10 +688,12 @@
     const msg = `Concluir a semana ${ddmm(week.start)}?\n\nFeitos: ${s.done} de ${s.total}.` +
       (pending ? `\n${pending} treino(s) não feitos ficarão registrados como não realizados.` : '');
     if (!await ask(msg, { okText: 'Concluir semana' })) return;
-    state.history.unshift({ ...week, closedAt: new Date().toISOString() });
+    const closed = { ...week, closedAt: new Date().toISOString() };
+    state.history = [closed, ...state.history.filter(w => w.start !== week.start)];
     state.current = null;
     $('newStart').value = addDays(week.start, 7);
-    save();
+    putWeek(closed);
+    saveMain();
     render();
     $('newWeekPanel').scrollIntoView({ behavior: 'smooth' });
   }
@@ -522,7 +703,7 @@
     if (!start) { toast('Escolha a data da segunda-feira.'); return; }
     const monday = mondayOf(fromISO(start));
     if (state.history.some(w => w.start === monday) &&
-        !await ask(`Já existe uma semana ${ddmm(monday)} concluída. Criar mesmo assim?`, { okText: 'Criar' })) return;
+        !await ask(`A semana ${ddmm(monday)} já está entre as concluídas. Se criar de novo, ela será substituída quando você concluir esta. Criar mesmo assim?`, { okText: 'Criar' })) return;
     const mode = $('newMode').value;
     let items = [];
     if (mode === 'ideal') {
@@ -532,7 +713,7 @@
     }
     state.current = { start: monday, items };
     $('newStart').value = '';
-    save();
+    saveMain();
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -541,7 +722,7 @@
     const id = e.target.dataset.toggle;
     if (!id) return;
     const item = findItem(id);
-    if (item) { item.done = e.target.checked; save(); render(); }
+    if (item) { item.done = e.target.checked; saveMain(); render(); }
   });
 
   document.addEventListener('submit', e => {
@@ -552,7 +733,7 @@
     const name = input.value.trim();
     if (!name) return;
     state.current.items.push({ id: uid(), day: Number(day), name, done: false });
-    save();
+    saveMain();
     render();
     // mantém o foco no mesmo dia para adicionar vários treinos seguidos
     const again = document.querySelector(`form[data-add="${day}"] input`);
@@ -563,21 +744,23 @@
     const t = e.target.dataset;
     if (t.remove) {
       state.current.items = state.current.items.filter(i => i.id !== t.remove);
-      save(); render();
+      saveMain(); render();
     }
     if (t.copyHist) copySheet(state.history[Number(t.copyHist)]);
     if (t.reopen) {
       const [w] = state.history.splice(Number(t.reopen), 1);
       delete w.closedAt;
       state.current = w;
-      save(); render();
+      deleteWeek(w.start);
+      saveMain(); render();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     if (t.deleteHist) {
       const w = state.history[Number(t.deleteHist)];
       if (await ask(`Excluir a semana ${ddmm(w.start)} do histórico?`, { okText: 'Excluir' })) {
         state.history.splice(Number(t.deleteHist), 1);
-        save(); render();
+        deleteWeek(w.start);
+        render();
       }
     }
   });
@@ -587,7 +770,7 @@
   $('saveIdealBtn').addEventListener('click', () => {
     state.ideal = DAYS.map((_, d) =>
       document.querySelector(`[data-ideal="${d}"]`).value.split('\n').map(s => s.trim()).filter(Boolean));
-    save();
+    saveMain();
     renderIdeal();
     toast('Semana Ideal salva.');
   });
@@ -613,9 +796,8 @@
       toast('Backup inválido.');
       return;
     }
-    if (await ask('Importar este backup? Ele substitui a semana atual, a Semana Ideal e o histórico deste navegador.', { okText: 'Importar' })) {
-      state = data;
-      save();
+    if (await ask('Importar este backup? Ele substitui a semana atual, a Semana Ideal e o histórico.', { okText: 'Importar' })) {
+      replaceAll(data, state.history);
       renderIdeal();
       render();
       toast('Backup importado.');
@@ -636,6 +818,7 @@
 
   renderIdeal();
   render();
+  if (window.claude) connectCloud();
 </script>
 </body>
 </html>
