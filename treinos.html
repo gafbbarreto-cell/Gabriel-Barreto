@@ -100,6 +100,8 @@
     .tally b { font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .tally span { font-size: .85rem; }
     .tally small { color: var(--muted); font-size: .78rem; }
+    .tally small strong { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .tally .total small strong { color: var(--done); }
     .chip {
       font-size: .8rem;
       padding: 3px 10px;
@@ -544,7 +546,8 @@
     // Só os tipos que têm treino planejado nesta semana, na ordem de CATEGORIES.
     const names = [...CATEGORIES.map(c => c.name), 'Outros'].filter(n => s.byCat[n]);
     const tile = (cls, done, label, total) =>
-      `<div class="${cls}"><b>${done}</b><span>${label}</span><small>de ${total} planejado${total === 1 ? '' : 's'}</small></div>`;
+      `<div class="${cls}"><b>${done}</b><span>${label}</span>` +
+      `<small><strong>${total ? Math.round(100 * done / total) : 0}%</strong> de ${total} planejado${total === 1 ? '' : 's'}</small></div>`;
     return `<div class="tally" aria-label="Treinos realizados na semana">
       ${tile('total', s.done, 'Total', s.total)}
       ${names.map(n => { const v = s.byCat[n] || { done: 0, total: 0 }; return tile('', v.done, n, v.total); }).join('')}
