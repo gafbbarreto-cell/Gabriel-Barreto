@@ -126,7 +126,7 @@
   }
   .chip:hover { background: var(--surface-2); }
   .chip.done { background: var(--done); border-color: var(--done); color: var(--done-ink); }
-  .chip.todo { background: transparent; border: 1px dashed var(--ink-faint); color: var(--ink-faint); }
+  .chip.todo { background: transparent; border: 1px dashed var(--c); color: var(--c); }
   .chip.done:hover { filter: brightness(1.08); }
   .legend { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
   .legend .chip { pointer-events: none; font-size: 11px; padding: 0 8px; }
@@ -250,7 +250,7 @@
       <button type="button" class="btn small" id="showAll" data-stage="">Mostrar todas</button>
     </div>
     <div class="funnel" id="funnel"></div>
-    <div class="legend"><span class="chip done">Empresa</span> entrevista feita <span class="chip todo">Empresa</span> entrevista a fazer</div>
+    <div class="legend"><span class="chip done">Empresa</span> entrevista feita <span class="chip todo" style="--c:var(--s-recruiter);background:color-mix(in srgb, var(--s-recruiter) 16%, var(--surface))">Empresa</span> entrevista a fazer</div>
     <div class="odds" id="odds"></div>
   </section>
 
