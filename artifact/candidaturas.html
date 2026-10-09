@@ -13,6 +13,8 @@
     --accent: #1F6F5C;
     --accent-ink: #FFFFFF;
     --accent-soft: #DCEDE7;
+    --done: #2E8A4E;
+    --done-ink: #FFFFFF;
     --danger: #B23A3A;
     --s-aplicado: #6B7A74;
     --s-recruiter: #5B5FC7;
@@ -37,6 +39,8 @@
       --accent: #5CC2A6;
       --accent-ink: #0E1A16;
       --accent-soft: #1C3A31;
+      --done: #6CC98D;
+      --done-ink: #0E1A16;
       --danger: #E58080;
       --s-aplicado: #93A29C;
       --s-recruiter: #9A9DF0;
@@ -59,6 +63,8 @@
     --accent: #5CC2A6;
     --accent-ink: #0E1A16;
     --accent-soft: #1C3A31;
+    --done: #6CC98D;
+    --done-ink: #0E1A16;
     --danger: #E58080;
     --s-aplicado: #93A29C;
     --s-recruiter: #9A9DF0;
@@ -119,6 +125,16 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .chip:hover { background: var(--surface-2); }
+  .chip.done { background: var(--done); border-color: var(--done); color: var(--done-ink); }
+  .chip.todo { background: transparent; border: 1px dashed var(--ink-faint); color: var(--ink-faint); }
+  .chip.done:hover { filter: brightness(1.08); }
+  .legend { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
+  .legend .chip { pointer-events: none; font-size: 11px; padding: 0 8px; }
+  .interview { font-size: 13px; font-weight: 600; }
+  .interview.done { color: var(--done); }
+  .interview.todo { color: var(--ink-faint); }
+  .check { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-soft); }
+  .check[hidden] { display: none; }
   .band-empty { font-size: 12px; color: var(--ink-faint); }
   .card.flash { outline: 2px solid var(--c); outline-offset: 2px; }
   .below { display: flex; flex-direction: column; gap: 24px; }
@@ -234,6 +250,7 @@
       <button type="button" class="btn small" id="showAll" data-stage="">Mostrar todas</button>
     </div>
     <div class="funnel" id="funnel"></div>
+    <div class="legend"><span class="chip done">Empresa</span> entrevista feita <span class="chip todo">Empresa</span> entrevista a fazer</div>
     <div class="odds" id="odds"></div>
   </section>
 
@@ -261,6 +278,7 @@
       <label class="field"><span>Empresa</span><input id="company" required></label>
       <label class="field"><span>Vaga</span><input id="role" required></label>
       <label class="field"><span>Status</span><select id="status"></select></label>
+      <label class="check full" id="stageDoneWrap"><input type="checkbox" id="stageDone"> Entrevista desta etapa já foi feita</label>
       <label class="field"><span>Faixa de remuneração</span><input id="salary" placeholder="Ex.: R$ 20–25 mil (CLT)"></label>
       <label class="field"><span>Nota no Bússola (0 a 5)</span><input id="bussolaScore" type="number" min="0" max="5" step="0.01"></label>
       <label class="field full"><span>Próximos passos</span><textarea id="nextSteps" rows="2"></textarea></label>
@@ -292,6 +310,7 @@
     { name: 'Desisti', c: 'var(--s-desisti)' }
   ];
   var FIELDS = ['company', 'role', 'status', 'salary', 'bussolaScore', 'nextSteps', 'jobDescription', 'companyDescription'];
+  // stageDone: a entrevista da etapa atual já aconteceu (só vale para etapas de entrevista).
 
   var $ = function (id) { return document.getElementById(id); };
   var db = null, col = null;
@@ -331,9 +350,12 @@
     for (var i = 0; i < FLOW.length; i++) if (FLOW[i].name === name) return i;
     return -1;
   }
+  function isInterview(name) { return /^Entrevista /.test(name || ''); }
   function chipsHTML(list) {
     return list.map(function (a) {
-      return '<button type="button" class="chip" data-jump="' + esc(a.id) + '" title="' + esc(a.company + ' · ' + a.role) + '">' + esc(a.company) + '</button>';
+      var cls = isInterview(a.status) ? (a.stageDone ? ' done' : ' todo') : '';
+      var tip = a.company + ' · ' + a.role + (cls ? (a.stageDone ? ' · entrevista feita' : ' · entrevista a fazer') : '');
+      return '<button type="button" class="chip' + cls + '" data-jump="' + esc(a.id) + '" title="' + esc(tip) + '">' + esc(a.company) + '</button>';
     }).join('');
   }
 
@@ -424,6 +446,9 @@
     return '<article class="card" data-card="' + esc(a.id) + '" style="--c:' + colorOf(a.status) + '">' +
       '<div class="card-head"><div><div class="company">' + esc(a.company) + '</div><div class="role">' + esc(a.role) + '</div></div>' +
       '<span class="pill">' + esc(a.status) + '</span></div>' +
+      (isInterview(a.status) ? '<div><button type="button" class="btn small" data-done="' + esc(a.id) + '">' +
+        (a.stageDone ? '<span class="interview done">✓ Entrevista feita</span>' : '<span class="interview todo">○ Entrevista a fazer</span> · marcar como feita') +
+      '</button></div>' : '') +
       (facts ? '<div class="facts">' + facts + '</div>' : '') +
       (a.nextSteps ? '<div class="next"><b>Próximos passos:</b> ' + esc(a.nextSteps) + '</div>' : '') +
       (a.jobDescription ? '<details><summary>Descrição da vaga</summary><p>' + esc(a.jobDescription) + '</p></details>' : '') +
@@ -477,10 +502,14 @@
       $(f).value = (v == null) ? '' : v;
     });
     if (!a) $('status').value = STATUSES[0].name;
+    $('stageDone').checked = !!(a && a.stageDone);
+    syncStageDone();
     $('form').hidden = false;
     $('company').focus();
     $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+  function syncStageDone() { $('stageDoneWrap').hidden = !isInterview($('status').value); }
+  $('status').addEventListener('change', function () { $('stageDone').checked = false; syncStageDone(); });
   function closeForm() { $('form').hidden = true; editingId = null; $('form').reset(); }
 
   function readForm() {
@@ -491,6 +520,7 @@
       status: $('status').value,
       salary: $('salary').value.trim(),
       bussolaScore: score === '' ? null : Number(score),
+      stageDone: isInterview($('status').value) && $('stageDone').checked,
       nextSteps: $('nextSteps').value.trim(),
       jobDescription: $('jobDescription').value.trim(),
       companyDescription: $('companyDescription').value.trim()
@@ -554,6 +584,13 @@
   });
 
   $('list').addEventListener('click', function (e) {
+    var dn = e.target.closest('[data-done]');
+    if (dn) {
+      var dId = dn.getAttribute('data-done');
+      var cur = apps.filter(function (x) { return x.id === dId; })[0];
+      if (cur && col) col.doc(dId).update({ stageDone: !cur.stageDone, updatedAt: new Date().toISOString() }).catch(writeError);
+      return;
+    }
     var ed = e.target.closest('[data-edit]');
     var del = e.target.closest('[data-delete]');
     if (ed) {
