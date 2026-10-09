@@ -93,8 +93,9 @@
     .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
     .toolbar .spacer { flex: 1; }
     .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-    .tally { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 12px 0; }
-    .tally div { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
+    .tally { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin: 12px 0; }
+    .tally div { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
+    .tally span, .tally small { overflow-wrap: anywhere; }
     .tally .total { border-color: var(--done); }
     .tally b { font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .tally span { font-size: .85rem; }
@@ -201,9 +202,6 @@
 
   <!-- Semana atual -->
   <section class="panel" id="currentPanel"></section>
-
-  <!-- Pendentes -->
-  <section class="panel" id="pendingPanel"></section>
 
   <!-- Montar nova semana (aparece quando não há semana aberta) -->
   <section class="panel" id="newWeekPanel" hidden>
@@ -548,7 +546,7 @@
     const tile = (cls, done, label, total) =>
       `<div class="${cls}"><b>${done}</b><span>${label}</span><small>de ${total} planejado${total === 1 ? '' : 's'}</small></div>`;
     return `<div class="tally" aria-label="Treinos realizados na semana">
-      ${tile('total', s.done, s.done === 1 ? 'treino realizado' : 'treinos realizados', s.total)}
+      ${tile('total', s.done, 'Total', s.total)}
       ${names.map(n => { const v = s.byCat[n] || { done: 0, total: 0 }; return tile('', v.done, n, v.total); }).join('')}
     </div>`;
   }
@@ -614,29 +612,6 @@
     $('closeWeekBtn').onclick = closeWeek;
   }
 
-  function renderPending() {
-    const panel = $('pendingPanel');
-    const week = state.current;
-    if (!week) { panel.hidden = true; return; }
-    panel.hidden = false;
-    const today = todayISO();
-    const pending = week.items.filter(i => !i.done)
-      .sort((a, b) => a.day - b.day);
-    const dateOf = i => addDays(week.start, i.day);
-    const groups = [
-      ['Atrasados', pending.filter(i => dateOf(i) < today), true],
-      ['Hoje', pending.filter(i => dateOf(i) === today), false],
-      ['Próximos dias', pending.filter(i => dateOf(i) > today), false],
-    ].filter(([, list]) => list.length);
-
-    panel.innerHTML = `<h2>O que falta fazer</h2>` + (pending.length
-      ? `<div class="pending">${groups.map(([title, list, late]) =>
-          `<div class="group">${title}</div>` +
-          list.map(i => workoutHtml({ ...i, name: `${DAYS[i.day]} · ${i.name}` }, { late, removable: false })).join('')
-        ).join('')}</div>`
-      : `<div class="empty">Tudo feito nesta semana! 👊🏻 Hora de concluir e planejar a próxima.</div>`);
-  }
-
   function renderNewWeek() {
     const panel = $('newWeekPanel');
     panel.hidden = !!state.current;
@@ -685,13 +660,11 @@
   function render() {
     if (loading) {
       $('currentPanel').innerHTML = `<div class="empty">Carregando seus treinos…</div>`;
-      $('pendingPanel').hidden = true;
       $('newWeekPanel').hidden = true;
       $('history').innerHTML = '';
       return;
     }
     renderCurrent();
-    renderPending();
     renderNewWeek();
     renderHistory();
   }
