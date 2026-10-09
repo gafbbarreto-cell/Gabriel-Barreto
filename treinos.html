@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meus Treinos</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1f2328;
+      --muted: #656d76;
+      --border: #d0d7de;
+      --accent: #2563eb;
+      --danger: #dc2626;
+      --done: #16a34a;
+      --late: #d97706;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0d1117;
+        --card: #161b22;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --border: #30363d;
+        --accent: #4f8cff;
+        --danger: #f87171;
+        --done: #4ade80;
+        --late: #fbbf24;
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0d1117;
+        --card: #161b22;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --border: #30363d;
+        --accent: #4f8cff;
+        --danger: #f87171;
+        --done: #4ade80;
+        --late: #fbbf24;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.4;
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    h2 { margin: 0 0 12px; font-size: 1.1rem; }
+    .subtitle { margin: 0 0 24px; color: var(--muted); }
+    nav { margin-bottom: 16px; font-size: .9rem; }
+    nav a { color: var(--accent); }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--muted); }
+    input, select, textarea {
+      font: inherit;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-width: 0;
+    }
+    textarea { resize: vertical; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+    button {
+      font: inherit;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.danger { color: var(--danger); }
+    button.small { padding: 4px 10px; font-size: .85rem; }
+
+    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .toolbar .spacer { flex: 1; }
+    .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .chip {
+      font-size: .8rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+    .chip.ok { border-color: var(--done); }
+
+    .progress { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; margin-bottom: 12px; }
+    .progress > div { height: 100%; background: var(--done); transition: width .2s; }
+
+    .week-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .week-title { font-weight: 600; font-size: 1.15rem; }
+
+    .days { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+    .day {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .day-name { font-weight: 600; font-size: .9rem; }
+    .day-name small { color: var(--muted); font-weight: 400; }
+
+    .workout { display: flex; align-items: center; gap: 6px; font-size: .9rem; }
+    .workout input[type=checkbox] { width: 18px; height: 18px; flex: none; accent-color: var(--done); }
+    .workout span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .workout.done span { text-decoration: line-through; color: var(--muted); }
+    .workout.late span { color: var(--late); }
+    .workout .x { border: none; background: none; padding: 0 4px; color: var(--muted); font-size: 1rem; }
+    .add-row { display: flex; gap: 4px; margin-top: auto; }
+    .add-row input { flex: 1; padding: 4px 8px; font-size: .85rem; }
+    .add-row button { padding: 4px 8px; }
+
+    .pending { display: grid; gap: 6px; }
+    .pending .group { font-size: .8rem; color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .04em; }
+    .empty { text-align: center; color: var(--muted); padding: 20px 0; }
+
+    .new-week { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end; }
+
+    .ideal { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+
+    details > summary { cursor: pointer; font-weight: 600; }
+    .history { display: grid; gap: 10px; margin-top: 12px; }
+    .hist-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+    .hist-item summary { font-weight: 500; }
+    table { border-collapse: collapse; width: 100%; font-size: .85rem; margin-top: 8px; }
+    .table-wrap { overflow-x: auto; }
+    th, td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 500; }
+    .sync { margin: -14px 0 20px; font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .sync[data-state="saved"]::before { background: var(--done); }
+    .sync[data-state="saving"]::before { background: var(--accent); }
+    .sync[data-state="error"], .sync[data-state="local"] { color: var(--late); }
+    .sync[data-state="error"]::before, .sync[data-state="local"]::before { background: var(--late); }
+    .notice { border-color: var(--late); display: grid; gap: 12px; }
+    .notice p { margin: 0; }
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10;
+    }
+    .dialog {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px; max-width: 420px; width: 100%; display: grid; gap: 14px;
+    }
+    .dialog p { margin: 0; white-space: pre-wrap; }
+    .dialog textarea { width: 100%; font-size: .8rem; }
+    .dialog .actions { justify-content: flex-end; }
+    .toast {
+      position: fixed; left: 50%; transform: translateX(-50%);
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px;
+      font-size: .9rem; z-index: 11; max-width: calc(100% - 32px);
+    }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <nav><a href="index.html">← Minhas Candidaturas</a></nav>
+  <h1>Meus Treinos</h1>
+  <p class="subtitle">Monte a semana, dê check no que fez, veja o que falta e feche a semana para planejar a próxima.</p>
+  <p class="sync" id="sync" data-state="local">Salvo só neste navegador</p>
+
+  <!-- Treinos que ficaram salvos só neste navegador (versões antigas da página) -->
+  <section class="panel notice" id="migratePanel" hidden>
+    <p id="migrateMsg"></p>
+    <div class="actions">
+      <button type="button" class="primary small" id="migrateUseBtn">Usar os dados deste navegador</button>
+      <button type="button" class="small" id="migrateSkipBtn">Manter os da nuvem</button>
+    </div>
+  </section>
+
+  <!-- Semana atual -->
+  <section class="panel" id="currentPanel"></section>
+
+  <!-- Pendentes -->
+  <section class="panel" id="pendingPanel"></section>
+
+  <!-- Montar nova semana (aparece quando não há semana aberta) -->
+  <section class="panel" id="newWeekPanel" hidden>
+    <h2>Montar a próxima semana</h2>
+    <div class="new-week">
+      <label>Segunda-feira da semana
+        <input type="date" id="newStart">
+      </label>
+      <label>Começar a partir de
+        <select id="newMode">
+          <option value="ideal">Semana Ideal</option>
+          <option value="last">Repetir a última semana</option>
+          <option value="blank">Semana em branco</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button type="button" class="primary" id="createWeekBtn">Criar semana</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Semana Ideal -->
+  <section class="panel">
+    <details id="idealDetails">
+      <summary>Semana Ideal (modelo)</summary>
+      <p class="subtitle" style="margin:8px 0 12px">Um treino por linha. Usada como ponto de partida ao montar uma nova semana.</p>
+      <div class="ideal" id="ideal"></div>
+      <div class="actions" style="margin-top:12px">
+        <button type="button" class="primary small" id="saveIdealBtn">Salvar Semana Ideal</button>
+      </div>
+    </details>
+  </section>
+
+  <!-- Histórico -->
+  <section class="panel">
+    <details id="historyDetails">
+      <summary>Semanas concluídas</summary>
+      <div class="history" id="history"></div>
+    </details>
+  </section>
+
+  <div class="toolbar">
+    <div class="spacer"></div>
+    <button type="button" class="small" id="copyBackupBtn">Copiar backup</button>
+    <button type="button" class="small" id="exportBtn">Exportar backup</button>
+    <button type="button" class="small" id="pasteBackupBtn">Colar backup</button>
+    <button type="button" class="small" id="importBtn">Importar backup</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div>
+</main>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true">
+    <p id="dialogMsg"></p>
+    <textarea id="dialogText" rows="6" readonly hidden></textarea>
+    <div class="actions">
+      <button type="button" id="dialogCancel">Cancelar</button>
+      <button type="button" class="primary" id="dialogOk">OK</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+  const STORAGE_KEY = 'treinos.v1';
+  const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+  const CATEGORIES = [
+    { name: 'Academia', test: /academia|gym|push|pull|legs|muscula/i },
+    { name: 'Tênis',    test: /t[êe]nis|tennis/i },
+    { name: 'Aeróbico', test: /corrida|run|bike|bicicleta|nata[çc][ãa]o|swim|aer[óo]b|cardio/i },
+  ];
+  const categoryOf = name => (CATEGORIES.find(c => c.test.test(name)) || { name: 'Outros' }).name;
+
+  const $ = id => document.getElementById(id);
+  const uid = () => crypto.randomUUID();
+
+  // ---------- datas (sempre em horário local, formato AAAA-MM-DD) ----------
+  const toISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const fromISO = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const addDays = (iso, n) => { const d = fromISO(iso); d.setDate(d.getDate() + n); return toISO(d); };
+  const mondayOf = date => { const d = new Date(date); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return toISO(d); };
+  const ddmm = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  const todayISO = () => toISO(new Date());
+
+  // ---------- dados ----------
+  // Dados iniciais tirados da aba "Treinos" da planilha Sports.
+  function seed() {
+    const mk = (day, name, done = false) => ({ id: uid(), day, name, done });
+    return {
+      ideal: [
+        ['Academia Legs', 'Corrida Leve'],
+        ['Tênis Treino'],
+        ['Academia Push', 'Corrida Longa'],
+        ['Tênis Aula'],
+        ['Academia Pull', 'Corrida Rápida'],
+        ['Tênis Jogos'],
+        ['Academia Opcional'],
+      ],
+      current: {
+        start: '2026-10-05',
+        items: [
+          mk(0, 'Academia Push', true), mk(1, 'Academia Legs'), mk(2, 'Academia Pull'), mk(3, 'Tênis Aula'),
+          mk(4, 'Academia Push'), mk(5, 'Academia Pull'), mk(6, 'Academia Opcional'),
+        ],
+      },
+      history: [{
+        start: '2026-09-28',
+        closedAt: '2026-10-04T23:59:00.000Z',
+        items: [
+          mk(0, 'Academia Pull', true), mk(1, 'Academia Legs', true), mk(2, 'Academia Push', true), mk(2, 'Tênis Jogo', true),
+          mk(3, 'Academia Pull', true), mk(4, 'Tênis Jogo', true), mk(5, 'Academia Push', true), mk(6, 'Academia Pull', true),
+        ],
+      }],
+    };
+  }
+
+  function readLocal() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }
+  function saveLocal() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch { toast('Não foi possível salvar no navegador. Use "Copiar backup" para não perder os dados.'); }
+  }
+
+  // Onde os dados ficam:
+  // - Publicada no Claude: no banco da própria página (doc "treinos/estado" com a Semana Ideal e a
+  //   semana atual, e um doc por semana concluída em "semanas"). Vale para qualquer aparelho.
+  // - Arquivo aberto direto no navegador: localStorage, como antes.
+  const emptyState = () => ({ ideal: DAYS.map(() => []), current: null, history: [] });
+  let state = window.claude ? emptyState() : (readLocal() || seed());
+  let cloud = null;       // { main, weeks } quando o banco está ativo
+  let loading = !!window.claude;
+
+  function setSync(kind) {
+    const text = {
+      saved: 'Salvo na nuvem · aparece em qualquer aparelho',
+      saving: 'Salvando…',
+      error: 'Não foi possível salvar. Verifique a conexão e tente de novo.',
+      local: 'Salvo só neste navegador',
+      loading: 'Carregando seus treinos…',
+    }[kind];
+    $('sync').dataset.state = kind;
+    $('sync').textContent = text;
+  }
+
+  // Gravações em fila, uma de cada vez. A gravação da semana atual lê o estado mais recente ao rodar.
+  let chain = Promise.resolve(), pendingWrites = 0, mainQueued = false, writeFailed = false;
+  async function withRetry(fn) {
+    try { return await fn(); }
+    catch (e) {
+      if (e && e.code === 'unavailable') {
+        await new Promise(res => setTimeout(res, 500 + Math.random() * 1000));
+        return fn();
+      }
+      throw e;
+    }
+  }
+  function enqueue(fn) {
+    pendingWrites++;
+    setSync('saving');
+    chain = chain.then(() => withRetry(fn)).then(
+      () => {},
+      e => {
+        writeFailed = true;
+        toast(e && e.code === 'invalid_argument'
+          ? 'Você só pode visualizar estes treinos.'
+          : 'Não foi possível salvar. Verifique a conexão e tente de novo.');
+      },
+    ).then(() => {
+      if (--pendingWrites === 0) { setSync(writeFailed ? 'error' : 'saved'); writeFailed = false; }
+    });
+  }
+  const mainBody = () => ({
+    ideal: Object.fromEntries(state.ideal.map((list, d) => ['d' + d, list])),
+    current: state.current,
+    updatedAt: new Date().toISOString(),
+  });
+  function saveMain() {
+    if (!cloud) return saveLocal();
+    if (mainQueued) return;
+    mainQueued = true;
+    enqueue(() => { mainQueued = false; return cloud.main.set(mainBody()); });
+  }
+  function putWeek(week) {
+    if (!cloud) return saveLocal();
+    const body = JSON.parse(JSON.stringify(week));
+    enqueue(() => cloud.weeks.doc(body.start).set(body));
+  }
+  function deleteWeek(start) {
+    if (!cloud) return saveLocal();
+    enqueue(() => cloud.weeks.doc(start).delete());
+  }
+  // Substitui tudo (backup importado ou dados recuperados deste navegador).
+  function replaceAll(data, previousHistory) {
+    state = data;
+    if (!cloud) return saveLocal();
+    const keep = new Set(state.history.map(w => w.start));
+    for (const w of previousHistory) if (!keep.has(w.start)) deleteWeek(w.start);
+    for (const w of state.history) putWeek(w);
+    saveMain();
+  }
+
+  async function connectCloud() {
+    setSync('loading');
+    let db = null;
+    try { db = await window.claude.use('db'); } catch {}
+    if (!db) {
+      // Sem banco nesta visualização: volta a guardar no navegador.
+      loading = false;
+      state = readLocal() || emptyState();
+      setSync('local');
+      renderIdeal();
+      render();
+      return;
+    }
+    cloud = { main: db.doc('treinos/estado'), weeks: db.collection('semanas') };
+    let gotMain = false, gotWeeks = false;
+    const ready = () => {
+      if (!gotMain || !gotWeeks) return;
+      if (loading) { loading = false; setSync('saved'); offerLocalData(); renderIdeal(); }
+      render();
+    };
+    cloud.main.onSnapshot(snap => {
+      gotMain = true;
+      if (pendingWrites && !loading) return; // não sobrescreve um check que ainda está sendo salvo
+      const d = snap.exists ? snap.data() : null;
+      const ideal = DAYS.map((_, i) => (d && d.ideal && d.ideal['d' + i]) ? [...d.ideal['d' + i]] : []);
+      const idealChanged = JSON.stringify(ideal) !== JSON.stringify(state.ideal);
+      state.ideal = ideal;
+      state.current = d && d.current ? JSON.parse(JSON.stringify(d.current)) : null;
+      if (idealChanged && !loading && !document.activeElement?.dataset?.ideal) renderIdeal();
+      ready();
+    }, onCloudError);
+    cloud.weeks.onSnapshot(qs => {
+      gotWeeks = true;
+      if (pendingWrites && !loading) return;
+      state.history = qs.docs.map(doc => JSON.parse(JSON.stringify(doc.data())))
+        .sort((a, b) => b.start.localeCompare(a.start));
+      ready();
+    }, onCloudError);
+  }
+  function onCloudError() {
+    setSync('error');
+    toast('A conexão com a nuvem caiu. Recarregue a página para continuar salvando.');
+  }
+
+  // Treinos marcados em versões antigas desta página ficaram só no navegador: oferece trazer para a nuvem.
+  const MIGRATED_KEY = 'treinos.migrado';
+  function offerLocalData() {
+    let local = null, done = false;
+    try { done = localStorage.getItem(MIGRATED_KEY) === '1'; } catch {}
+    if (!done) local = readLocal();
+    if (!local || !Array.isArray(local.history)) return;
+    const comparable = st => JSON.stringify({ ideal: st.ideal, current: st.current, history: st.history.map(w => ({ start: w.start, items: w.items })) });
+    if (comparable(local) === comparable(state)) { markMigrated(); return; }
+    const all = [...(local.current ? [local.current] : []), ...local.history];
+    const checks = all.reduce((n, w) => n + w.items.filter(i => i.done).length, 0);
+    $('migrateMsg').textContent =
+      `Encontrei treinos salvos só neste navegador` +
+      (local.current ? ` (semana atual ${ddmm(local.current.start)}` : ' (') +
+      `, ${checks} treino(s) com check). Eles são diferentes dos que estão na nuvem. Quais você quer manter?`;
+    $('migratePanel').hidden = false;
+    $('migrateUseBtn').onclick = () => {
+      // Semanas concluídas que só existem na nuvem continuam no histórico.
+      const localStarts = new Set(local.history.map(w => w.start));
+      const merged = { ...local, history: [...local.history, ...state.history.filter(w => !localStarts.has(w.start))]
+        .sort((a, b) => b.start.localeCompare(a.start)) };
+      replaceAll(merged, state.history);
+      markMigrated();
+      renderIdeal();
+      render();
+      toast('Treinos deste navegador enviados para a nuvem.');
+    };
+    $('migrateSkipBtn').onclick = markMigrated;
+  }
+  function markMigrated() {
+    try { localStorage.setItem(MIGRATED_KEY, '1'); } catch {}
+    $('migratePanel').hidden = true;
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ---------- avisos e confirmações dentro da página ----------
+  let toastTimer;
+  function toast(msg) {
+    $('toast').textContent = msg;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('toast').hidden = true; }, 2500);
+  }
+  // Mostra a mensagem com OK/Cancelar (ou só OK, ou um texto para copiar) e resolve com true/false.
+  function ask(msg, { okText = 'OK', cancel = true, text = null, editable = false } = {}) {
+    $('dialogMsg').textContent = msg;
+    $('dialogText').hidden = text === null;
+    $('dialogText').value = text || '';
+    $('dialogText').readOnly = !editable;
+    $('dialogOk').textContent = okText;
+    $('dialogCancel').hidden = !cancel;
+    $('overlay').hidden = false;
+    if (text !== null) $('dialogText').select(); else $('dialogOk').focus();
+    return new Promise(resolve => {
+      const done = v => { $('overlay').hidden = true; $('dialogOk').onclick = $('dialogCancel').onclick = null; resolve(v); };
+      $('dialogOk').onclick = () => done(editable ? $('dialogText').value : true);
+      $('dialogCancel').onclick = () => done(false);
+    });
+  }
+  async function copyText(text, okMsg, fallbackMsg) {
+    try { await navigator.clipboard.writeText(text); toast(okMsg); }
+    catch { ask(fallbackMsg, { cancel: false, text }); }
+  }
+
+  // ---------- resumo ----------
+  function stats(items) {
+    const total = items.length, done = items.filter(i => i.done).length;
+    const byCat = {};
+    for (const i of items) {
+      const c = categoryOf(i.name);
+      byCat[c] = byCat[c] || { done: 0, total: 0 };
+      byCat[c].total++;
+      if (i.done) byCat[c].done++;
+    }
+    return { total, done, byCat };
+  }
+  function chipsHtml(items) {
+    const s = stats(items);
+    return `<span class="chip ${s.total && s.done === s.total ? 'ok' : ''}">Feitos: ${s.done} / ${s.total}</span>` +
+      Object.entries(s.byCat).map(([c, v]) =>
+        `<span class="chip ${v.done === v.total ? 'ok' : ''}">${c}: ${v.done} / ${v.total}</span>`).join('');
+  }
+
+  // Texto separado por tabulação no mesmo formato da aba Treinos (cole na planilha).
+  function sheetText(week) {
+    const rows = [['Semana ' + ddmm(week.start), ...DAYS]];
+    const perDay = DAYS.map((_, d) => week.items.filter(i => i.day === d));
+    const n = Math.max(2, ...perDay.map(l => l.length));
+    for (let r = 0; r < n; r++) {
+      rows.push([`Treino ${r + 1}`, ...perDay.map(l => l[r] ? l[r].name + (l[r].done ? ' 👊🏻' : '') : '')]);
+    }
+    return rows.map(r => r.join('\t')).join('\n');
+  }
+  function copySheet(week) {
+    copyText(sheetText(week), 'Copiado! Cole na aba Treinos da planilha.', 'Copie o texto abaixo e cole na aba Treinos:');
+  }
+
+  // ---------- render ----------
+  function workoutHtml(i, { late = false, removable = true } = {}) {
+    return `<div class="workout ${i.done ? 'done' : ''} ${late ? 'late' : ''}">
+      <input type="checkbox" data-toggle="${i.id}" ${i.done ? 'checked' : ''} aria-label="Concluído">
+      <span>${escapeHtml(i.name)}${i.done ? ' 👊🏻' : ''}</span>
+      ${removable ? `<button class="x" data-remove="${i.id}" title="Remover">×</button>` : ''}
+    </div>`;
+  }
+
+  function renderCurrent() {
+    const panel = $('currentPanel');
+    const week = state.current;
+    if (!week) {
+      panel.innerHTML = `<div class="empty">Nenhuma semana em andamento. Monte a próxima abaixo.</div>`;
+      return;
+    }
+    const today = todayISO();
+    const s = stats(week.items);
+    const pct = s.total ? Math.round(100 * s.done / s.total) : 0;
+    panel.innerHTML = `
+      <div class="week-head">
+        <div class="week-title">Semana ${ddmm(week.start)} – ${ddmm(addDays(week.start, 6))}</div>
+        <div class="actions">
+          <button class="small" id="copyCurrentBtn">Copiar para a planilha</button>
+          <button class="small primary" id="closeWeekBtn">Concluir semana</button>
+        </div>
+      </div>
+      <div class="summary" style="margin-top:10px">${chipsHtml(week.items)}</div>
+      <div class="progress"><div style="width:${pct}%"></div></div>
+      <div class="days">
+        ${DAYS.map((name, d) => {
+          const date = addDays(week.start, d);
+          const items = week.items.filter(i => i.day === d);
+          return `<div class="day ${date === today ? 'today' : ''}">
+            <div class="day-name">${name} <small>${ddmm(date)}${date === today ? ' · hoje' : ''}</small></div>
+            ${items.map(i => workoutHtml(i, { late: !i.done && date < today })).join('')}
+            <form class="add-row" data-add="${d}">
+              <input placeholder="+ treino" aria-label="Novo treino para ${name}">
+              <button type="submit" class="small">+</button>
+            </form>
+          </div>`;
+        }).join('')}
+      </div>`;
+    $('copyCurrentBtn').onclick = () => copySheet(week);
+    $('closeWeekBtn').onclick = closeWeek;
+  }
+
+  function renderPending() {
+    const panel = $('pendingPanel');
+    const week = state.current;
+    if (!week) { panel.hidden = true; return; }
+    panel.hidden = false;
+    const today = todayISO();
+    const pending = week.items.filter(i => !i.done)
+      .sort((a, b) => a.day - b.day);
+    const dateOf = i => addDays(week.start, i.day);
+    const groups = [
+      ['Atrasados', pending.filter(i => dateOf(i) < today), true],
+      ['Hoje', pending.filter(i => dateOf(i) === today), false],
+      ['Próximos dias', pending.filter(i => dateOf(i) > today), false],
+    ].filter(([, list]) => list.length);
+
+    panel.innerHTML = `<h2>O que falta fazer</h2>` + (pending.length
+      ? `<div class="pending">${groups.map(([title, list, late]) =>
+          `<div class="group">${title}</div>` +
+          list.map(i => workoutHtml({ ...i, name: `${DAYS[i.day]} · ${i.name}` }, { late, removable: false })).join('')
+        ).join('')}</div>`
+      : `<div class="empty">Tudo feito nesta semana! 👊🏻 Hora de concluir e planejar a próxima.</div>`);
+  }
+
+  function renderNewWeek() {
+    const panel = $('newWeekPanel');
+    panel.hidden = !!state.current;
+    if (state.current) return;
+    if (!$('newStart').value) {
+      const last = state.history[0];
+      $('newStart').value = last ? addDays(last.start, 7) : mondayOf(new Date());
+    }
+  }
+
+  function renderIdeal() {
+    $('ideal').innerHTML = DAYS.map((name, d) => `
+      <label>${name}
+        <textarea rows="3" data-ideal="${d}">${escapeHtml(state.ideal[d].join('\n'))}</textarea>
+      </label>`).join('');
+  }
+
+  function renderHistory() {
+    const el = $('history');
+    if (!state.history.length) {
+      el.innerHTML = `<div class="empty">Nenhuma semana concluída ainda.</div>`;
+      return;
+    }
+    el.innerHTML = state.history.map((w, idx) => {
+      const s = stats(w.items);
+      const perDay = DAYS.map((_, d) => w.items.filter(i => i.day === d));
+      const n = Math.max(1, ...perDay.map(l => l.length));
+      const rows = Array.from({ length: n }, (_, r) =>
+        `<tr><th>Treino ${r + 1}</th>${perDay.map(l => `<td>${l[r] ? escapeHtml(l[r].name) + (l[r].done ? ' 👊🏻' : ' ✗') : ''}</td>`).join('')}</tr>`).join('');
+      return `<details class="hist-item">
+        <summary>Semana ${ddmm(w.start)} — ${s.done} / ${s.total} treinos</summary>
+        <div class="summary" style="margin-top:8px">${chipsHtml(w.items)}</div>
+        <div class="table-wrap"><table>
+          <tr><th></th>${DAYS.map(d => `<th>${d}</th>`).join('')}</tr>
+          ${rows}
+        </table></div>
+        <div class="actions" style="margin-top:8px">
+          <button class="small" data-copy-hist="${idx}">Copiar para a planilha</button>
+          ${idx === 0 && !state.current ? `<button class="small" data-reopen="${idx}">Reabrir semana</button>` : ''}
+          <button class="small danger" data-delete-hist="${idx}">Excluir</button>
+        </div>
+      </details>`;
+    }).join('');
+  }
+
+  function render() {
+    if (loading) {
+      $('currentPanel').innerHTML = `<div class="empty">Carregando seus treinos…</div>`;
+      $('pendingPanel').hidden = true;
+      $('newWeekPanel').hidden = true;
+      $('history').innerHTML = '';
+      return;
+    }
+    renderCurrent();
+    renderPending();
+    renderNewWeek();
+    renderHistory();
+  }
+
+  // ---------- ações ----------
+  function findItem(id) { return state.current && state.current.items.find(i => i.id === id); }
+
+  async function closeWeek() {
+    const week = state.current;
+    const s = stats(week.items);
+    const pending = s.total - s.done;
+    const msg = `Concluir a semana ${ddmm(week.start)}?\n\nFeitos: ${s.done} de ${s.total}.` +
+      (pending ? `\n${pending} treino(s) não feitos ficarão registrados como não realizados.` : '');
+    if (!await ask(msg, { okText: 'Concluir semana' })) return;
+    const closed = { ...week, closedAt: new Date().toISOString() };
+    state.history = [closed, ...state.history.filter(w => w.start !== week.start)];
+    state.current = null;
+    $('newStart').value = addDays(week.start, 7);
+    putWeek(closed);
+    saveMain();
+    render();
+    $('newWeekPanel').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function createWeek() {
+    const start = $('newStart').value;
+    if (!start) { toast('Escolha a data da segunda-feira.'); return; }
+    const monday = mondayOf(fromISO(start));
+    if (state.history.some(w => w.start === monday) &&
+        !await ask(`A semana ${ddmm(monday)} já está entre as concluídas. Se criar de novo, ela será substituída quando você concluir esta. Criar mesmo assim?`, { okText: 'Criar' })) return;
+    const mode = $('newMode').value;
+    let items = [];
+    if (mode === 'ideal') {
+      items = state.ideal.flatMap((list, day) => list.map(name => ({ id: uid(), day, name, done: false })));
+    } else if (mode === 'last' && state.history[0]) {
+      items = state.history[0].items.map(i => ({ id: uid(), day: i.day, name: i.name, done: false }));
+    }
+    state.current = { start: monday, items };
+    $('newStart').value = '';
+    saveMain();
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  document.addEventListener('change', e => {
+    const id = e.target.dataset.toggle;
+    if (!id) return;
+    const item = findItem(id);
+    if (item) { item.done = e.target.checked; saveMain(); render(); }
+  });
+
+  document.addEventListener('submit', e => {
+    const day = e.target.dataset.add;
+    if (day === undefined) return;
+    e.preventDefault();
+    const input = e.target.querySelector('input');
+    const name = input.value.trim();
+    if (!name) return;
+    state.current.items.push({ id: uid(), day: Number(day), name, done: false });
+    saveMain();
+    render();
+    // mantém o foco no mesmo dia para adicionar vários treinos seguidos
+    const again = document.querySelector(`form[data-add="${day}"] input`);
+    if (again) again.focus();
+  });
+
+  document.addEventListener('click', async e => {
+    const t = e.target.dataset;
+    if (t.remove) {
+      state.current.items = state.current.items.filter(i => i.id !== t.remove);
+      saveMain(); render();
+    }
+    if (t.copyHist) copySheet(state.history[Number(t.copyHist)]);
+    if (t.reopen) {
+      const [w] = state.history.splice(Number(t.reopen), 1);
+      delete w.closedAt;
+      state.current = w;
+      deleteWeek(w.start);
+      saveMain(); render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (t.deleteHist) {
+      const w = state.history[Number(t.deleteHist)];
+      if (await ask(`Excluir a semana ${ddmm(w.start)} do histórico?`, { okText: 'Excluir' })) {
+        state.history.splice(Number(t.deleteHist), 1);
+        deleteWeek(w.start);
+        render();
+      }
+    }
+  });
+
+  $('createWeekBtn').addEventListener('click', createWeek);
+
+  $('saveIdealBtn').addEventListener('click', () => {
+    state.ideal = DAYS.map((_, d) =>
+      document.querySelector(`[data-ideal="${d}"]`).value.split('\n').map(s => s.trim()).filter(Boolean));
+    saveMain();
+    renderIdeal();
+    toast('Semana Ideal salva.');
+  });
+
+  $('copyBackupBtn').addEventListener('click', () =>
+    copyText(JSON.stringify(state), 'Backup copiado. Guarde em uma nota ou e-mail.', 'Copie o backup abaixo e guarde em uma nota ou e-mail:'));
+
+  $('exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `treinos-${todayISO()}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+
+  async function restore(json) {
+    let data;
+    try {
+      data = JSON.parse(json);
+      if (!data || !Array.isArray(data.ideal) || !Array.isArray(data.history)) throw new Error();
+    } catch {
+      toast('Backup inválido.');
+      return;
+    }
+    if (await ask('Importar este backup? Ele substitui a semana atual, a Semana Ideal e o histórico.', { okText: 'Importar' })) {
+      replaceAll(data, state.history);
+      renderIdeal();
+      render();
+      toast('Backup importado.');
+    }
+  }
+
+  $('pasteBackupBtn').addEventListener('click', async () => {
+    const text = await ask('Cole aqui o texto do backup:', { okText: 'Continuar', text: '', editable: true });
+    if (text) restore(text);
+  });
+
+  $('importBtn').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (file) restore(await file.text());
+  });
+
+  renderIdeal();
+  render();
+  if (window.claude) connectCloud();
+</script>
+</body>
+</html>
