@@ -250,7 +250,7 @@
       <button type="button" class="btn small" id="showAll" data-stage="">Mostrar todas</button>
     </div>
     <div class="funnel" id="funnel"></div>
-    <div class="legend"><span class="chip done">Empresa</span> entrevista feita <span class="chip todo" style="--c:var(--s-recruiter);background:color-mix(in srgb, var(--s-recruiter) 16%, var(--surface))">Empresa</span> entrevista a fazer</div>
+    <div class="legend"><span class="chip todo" style="--c:var(--s-recruiter);background:color-mix(in srgb, var(--s-recruiter) 16%, var(--surface))">Empresa</span> entrevista a fazer <span class="chip done">Empresa</span> entrevista feita</div>
     <div class="odds" id="odds"></div>
   </section>
 
@@ -352,7 +352,9 @@
   }
   function isInterview(name) { return /^Entrevista /.test(name || ''); }
   function chipsHTML(list) {
-    return list.map(function (a) {
+    // Entrevistas a fazer à esquerda, feitas à direita.
+    var ordered = list.filter(function (a) { return !a.stageDone; }).concat(list.filter(function (a) { return a.stageDone; }));
+    return ordered.map(function (a) {
       var cls = isInterview(a.status) ? (a.stageDone ? ' done' : ' todo') : '';
       var tip = a.company + ' · ' + a.role + (cls ? (a.stageDone ? ' · entrevista feita' : ' · entrevista a fazer') : '');
       return '<button type="button" class="chip' + cls + '" data-jump="' + esc(a.id) + '" title="' + esc(tip) + '">' + esc(a.company) + '</button>';
