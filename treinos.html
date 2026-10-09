@@ -154,7 +154,7 @@
     .table-wrap { overflow-x: auto; }
     th, td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; vertical-align: top; }
     th { color: var(--muted); font-weight: 500; }
-    .sync { margin: -14px 0 20px; font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .sync { margin: 6px 0 20px; font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
     .sync[data-state="saved"]::before { background: var(--done); }
     .sync[data-state="saving"]::before { background: var(--accent); }
@@ -188,7 +188,6 @@
 <main>
   <nav><a href="index.html">← Minhas Candidaturas</a></nav>
   <h1>Meus Treinos</h1>
-  <p class="subtitle">Monte a semana, dê check no que fez, veja o que falta e feche a semana para planejar a próxima.</p>
   <p class="sync" id="sync" data-state="local">Salvo só neste navegador</p>
 
   <!-- Treinos que ficaram salvos só neste navegador (versões antigas da página) -->
