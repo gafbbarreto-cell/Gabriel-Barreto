@@ -359,14 +359,10 @@
     }).join('');
   }
 
-  // Chance de uma candidatura em cada etapa chegar a Offer, a partir de taxas
-  // de passagem de referência para vagas sênior (ajustáveis aqui).
-  var PASS_RATES = [0.20, 0.50, 0.40, 0.50]; // Aplicado→Recruiter→HM→Final→Offer
-  function offerChance(k) {
-    var p = 1;
-    for (var i = k; i < PASS_RATES.length; i++) p *= PASS_RATES[i];
-    return p;
-  }
+  // Chance de uma candidatura chegar a Offer conforme a etapa em que está
+  // (Aplicado, Recruiter, Hiring Manager, Final, Offer). Ajustável aqui.
+  var OFFER_CHANCE = [0.05, 0.15, 0.25, 0.50, 1];
+  function offerChance(k) { return OFFER_CHANCE[k] || 0; }
   function fmtPct(x) {
     var v = x * 100;
     if (v > 0 && v < 1) return '<1%';
@@ -385,7 +381,7 @@
       '<span><span class="odds-label">de chance de receber pelo menos 1 Offer</span><br>' +
       '<span class="odds-sub">com as ' + active.length + ' candidatura' + (active.length === 1 ? '' : 's') + ' ativa' + (active.length === 1 ? '' : 's') + ' no funil</span></span></div>' +
       '<details><summary>Como é calculado</summary>' +
-      '<p>Cada candidatura tem uma chance de chegar a Offer conforme a etapa em que está. A chance de receber pelo menos 1 Offer é 1 menos a chance de nenhuma delas chegar lá. As taxas de passagem entre etapas são referências de mercado para vagas sênior: Aplicado → Recruiter 20%, Recruiter → Hiring Manager 50%, Hiring Manager → Final 40%, Final → Offer 50%. Recusado e Desisti não entram na conta.</p>' +
+      '<p>Cada candidatura tem uma chance de chegar a Offer conforme a etapa em que está. A chance de receber pelo menos 1 Offer é 1 menos a chance de nenhuma delas chegar lá. A chance de cada etapa está na tabela abaixo. Recusado e Desisti não entram na conta.</p>' +
       '<div class="table-scroll"><table><thead><tr><th>Etapa</th><th>Vagas</th><th>Chance de Offer</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
       '</details>';
   }
