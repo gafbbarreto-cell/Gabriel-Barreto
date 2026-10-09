@@ -93,6 +93,12 @@
     .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
     .toolbar .spacer { flex: 1; }
     .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .tally { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 12px 0; }
+    .tally div { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
+    .tally .total { border-color: var(--done); }
+    .tally b { font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .tally span { font-size: .85rem; }
+    .tally small { color: var(--muted); font-size: .78rem; }
     .chip {
       font-size: .8rem;
       padding: 3px 10px;
@@ -266,7 +272,7 @@
   const STORAGE_KEY = 'treinos.v1';
   const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
   const CATEGORIES = [
-    { name: 'Academia', test: /academia|gym|push|pull|legs|muscula/i },
+    { name: 'Musculação', test: /academia|gym|push|pull|legs|muscula/i },
     { name: 'Tênis',    test: /t[êe]nis|tennis/i },
     { name: 'Aeróbico', test: /corrida|run|bike|bicicleta|nata[çc][ãa]o|swim|aer[óo]b|cardio/i },
   ];
@@ -535,6 +541,18 @@
         `<span class="chip ${v.done === v.total ? 'ok' : ''}">${c}: ${v.done} / ${v.total}</span>`).join('');
   }
 
+  // Resumo da semana: quantos treinos de cada tipo já foram realizados.
+  function tallyHtml(items) {
+    const s = stats(items);
+    const names = [...CATEGORIES.map(c => c.name), ...Object.keys(s.byCat).filter(n => !CATEGORIES.some(c => c.name === n))];
+    const tile = (cls, done, label, total) =>
+      `<div class="${cls}"><b>${done}</b><span>${label}</span><small>de ${total} planejado${total === 1 ? '' : 's'}</small></div>`;
+    return `<div class="tally" aria-label="Treinos realizados na semana">
+      ${tile('total', s.done, s.done === 1 ? 'treino realizado' : 'treinos realizados', s.total)}
+      ${names.map(n => { const v = s.byCat[n] || { done: 0, total: 0 }; return tile('', v.done, n, v.total); }).join('')}
+    </div>`;
+  }
+
   // Texto separado por tabulação no mesmo formato da aba Treinos (cole na planilha).
   function sheetText(week) {
     const rows = [['Semana ' + ddmm(week.start), ...DAYS]];
@@ -576,7 +594,7 @@
           <button class="small primary" id="closeWeekBtn">Concluir semana</button>
         </div>
       </div>
-      <div class="summary" style="margin-top:10px">${chipsHtml(week.items)}</div>
+      ${tallyHtml(week.items)}
       <div class="progress"><div style="width:${pct}%"></div></div>
       <div class="days">
         ${DAYS.map((name, d) => {
