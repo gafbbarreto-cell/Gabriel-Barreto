@@ -14,7 +14,6 @@
     --accent-ink: #FFFFFF;
     --accent-soft: #DCEDE7;
     --done: #2E8A4E;
-    --done-ink: #FFFFFF;
     --danger: #B23A3A;
     --s-aplicado: #6B7A74;
     --s-recruiter: #5B5FC7;
@@ -40,7 +39,6 @@
       --accent-ink: #0E1A16;
       --accent-soft: #1C3A31;
       --done: #6CC98D;
-      --done-ink: #0E1A16;
       --danger: #E58080;
       --s-aplicado: #93A29C;
       --s-recruiter: #9A9DF0;
@@ -64,7 +62,6 @@
     --accent-ink: #0E1A16;
     --accent-soft: #1C3A31;
     --done: #6CC98D;
-    --done-ink: #0E1A16;
     --danger: #E58080;
     --s-aplicado: #93A29C;
     --s-recruiter: #9A9DF0;
@@ -125,11 +122,8 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .chip:hover { background: var(--surface-2); }
-  .chip.done { background: var(--done); border-color: var(--done); color: var(--done-ink); }
-  .chip.todo { background: transparent; border: 1px dashed var(--c); color: var(--c); }
-  .chip.done:hover { filter: brightness(1.08); }
+  .tick { color: var(--done); font-weight: 700; margin-left: 4px; }
   .legend { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
-  .legend .chip { pointer-events: none; font-size: 11px; padding: 0 8px; }
   .interview { font-size: 13px; font-weight: 600; }
   .interview.done { color: var(--done); }
   .interview.todo { color: var(--ink-faint); }
@@ -250,7 +244,7 @@
       <button type="button" class="btn small" id="showAll" data-stage="">Mostrar todas</button>
     </div>
     <div class="funnel" id="funnel"></div>
-    <div class="legend"><span class="chip todo" style="--c:var(--s-recruiter);background:color-mix(in srgb, var(--s-recruiter) 16%, var(--surface))">Empresa</span> entrevista a fazer <span class="chip done">Empresa</span> entrevista feita</div>
+    <div class="legend"><span class="tick">✓</span> entrevista feita</div>
     <div class="odds" id="odds"></div>
   </section>
 
@@ -355,9 +349,10 @@
     // Entrevistas a fazer à esquerda, feitas à direita.
     var ordered = list.filter(function (a) { return !a.stageDone; }).concat(list.filter(function (a) { return a.stageDone; }));
     return ordered.map(function (a) {
-      var cls = isInterview(a.status) ? (a.stageDone ? ' done' : ' todo') : '';
-      var tip = a.company + ' · ' + a.role + (cls ? (a.stageDone ? ' · entrevista feita' : ' · entrevista a fazer') : '');
-      return '<button type="button" class="chip' + cls + '" data-jump="' + esc(a.id) + '" title="' + esc(tip) + '">' + esc(a.company) + '</button>';
+      var done = isInterview(a.status) && a.stageDone;
+      var tip = a.company + ' · ' + a.role + (done ? ' · entrevista feita' : '');
+      return '<button type="button" class="chip" data-jump="' + esc(a.id) + '" title="' + esc(tip) + '">' + esc(a.company) +
+        (done ? '<span class="tick" aria-label="entrevista feita">✓</span>' : '') + '</button>';
     }).join('');
   }
 
