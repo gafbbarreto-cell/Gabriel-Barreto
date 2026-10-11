@@ -64,7 +64,7 @@
       line-height: 1.4;
     }
     main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
-    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    h1 { margin: 0 0 16px; font-size: 1.6rem; }
     h2 { margin: 0 0 12px; font-size: 1.1rem; }
     .subtitle { margin: 0 0 24px; color: var(--muted); }
     nav { margin-bottom: 16px; font-size: .9rem; }
@@ -178,7 +178,7 @@
     .table-wrap { overflow-x: auto; }
     th, td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; vertical-align: top; }
     th { color: var(--muted); font-weight: 500; }
-    .sync { margin: 6px 0 20px; font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .sync { margin: -8px 0 20px; font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
     .sync[data-state="saved"]::before { background: var(--done); }
     .sync[data-state="saving"]::before { background: var(--accent); }
@@ -212,7 +212,7 @@
 <main>
   <nav><a href="index.html">← Minhas Candidaturas</a></nav>
   <h1>Meus Treinos</h1>
-  <p class="sync" id="sync" data-state="local">Salvo só neste navegador</p>
+  <p class="sync" id="sync" data-state="local" hidden>Salvo só neste navegador</p>
 
   <!-- Treinos que ficaram salvos só neste navegador (versões antigas da página) -->
   <section class="panel notice" id="migratePanel" hidden>
@@ -372,6 +372,8 @@
       local: 'Salvo só neste navegador',
       loading: 'Carregando seus treinos…',
     }[kind];
+    // Só aparece quando há algo a corrigir (erro ao salvar ou dados presos a este navegador).
+    $('sync').hidden = !(kind === 'error' || kind === 'local');
     $('sync').dataset.state = kind;
     $('sync').textContent = text;
   }
