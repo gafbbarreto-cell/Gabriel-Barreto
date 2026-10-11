@@ -616,7 +616,6 @@
       <div class="week-head">
         <div class="week-title">Semana ${ddmm(week.start)} – ${ddmm(addDays(week.start, 6))}</div>
         <div class="actions">
-          <button class="small" id="copyCurrentBtn">Copiar para a planilha</button>
           <button class="small primary" id="closeWeekBtn">Concluir semana</button>
         </div>
       </div>
@@ -636,7 +635,6 @@
           </div>`;
         }).join('')}
       </div>`;
-    $('copyCurrentBtn').onclick = () => copySheet(week);
     $('closeWeekBtn').onclick = closeWeek;
   }
 
