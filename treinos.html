@@ -142,6 +142,15 @@
     }
     .day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
     .day-name { font-weight: 600; font-size: .9rem; }
+    .day-body { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    @media (min-width: 900px) { .days { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+    /* Celular: um dia por linha, nome à esquerda e treinos à direita. */
+    @media (max-width: 640px) {
+      .days { grid-template-columns: 1fr; gap: 8px; }
+      .day { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; align-items: start; }
+      .day-name { display: flex; flex-direction: column; padding-top: 4px; }
+      .workout span { overflow-wrap: break-word; }
+    }
     .day-name small { color: var(--muted); font-weight: 400; }
 
     .workout {
@@ -627,11 +636,13 @@
           const items = week.items.filter(i => i.day === d);
           return `<div class="day ${date === today ? 'today' : ''}">
             <div class="day-name">${name} <small>${ddmm(date)}${date === today ? ' · hoje' : ''}</small></div>
-            ${items.map(i => workoutHtml(i, { late: !i.done && date < today })).join('')}
-            <form class="add-row" data-add="${d}">
-              <input placeholder="+ treino" aria-label="Novo treino para ${name}">
-              <button type="submit" class="small">+</button>
-            </form>
+            <div class="day-body">
+              ${items.map(i => workoutHtml(i, { late: !i.done && date < today })).join('')}
+              <form class="add-row" data-add="${d}">
+                <input placeholder="+ treino" aria-label="Novo treino para ${name}">
+                <button type="submit" class="small">+</button>
+              </form>
+            </div>
           </div>`;
         }).join('')}
       </div>`;
