@@ -134,6 +134,8 @@
 
     .week-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
     .week-title { font-weight: 600; font-size: 1.15rem; }
+    .week-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+    @media (max-width: 640px) { .week-foot button { width: 100%; } }
 
     .days { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
     .day {
@@ -629,9 +631,6 @@
     panel.innerHTML = `
       <div class="week-head">
         <div class="week-title">Semana ${ddmm(week.start)} – ${ddmm(addDays(week.start, 6))}</div>
-        <div class="actions">
-          <button class="small primary" id="closeWeekBtn">Concluir semana</button>
-        </div>
       </div>
       ${tallyHtml(week.items)}
       <div class="progress"><div style="width:${pct}%"></div></div>
@@ -650,6 +649,9 @@
             </div>
           </div>`;
         }).join('')}
+      </div>
+      <div class="week-foot">
+        <button class="primary" id="closeWeekBtn">Concluir semana</button>
       </div>`;
     $('closeWeekBtn').onclick = closeWeek;
   }
