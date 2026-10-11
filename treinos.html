@@ -15,6 +15,10 @@
       --danger: #dc2626;
       --done: #16a34a;
       --late: #d97706;
+      --cat-musc: #7c3aed;
+      --cat-tenis: #65a30d;
+      --cat-aero: #e11d48;
+      --cat-outros: #64748b;
     }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
@@ -27,6 +31,10 @@
         --danger: #f87171;
         --done: #4ade80;
         --late: #fbbf24;
+        --cat-musc: #a78bfa;
+        --cat-tenis: #a3e635;
+        --cat-aero: #fb7185;
+        --cat-outros: #94a3b8;
         color-scheme: dark;
       }
     }
@@ -40,6 +48,10 @@
         --danger: #f87171;
         --done: #4ade80;
         --late: #fbbf24;
+        --cat-musc: #a78bfa;
+        --cat-tenis: #a3e635;
+        --cat-aero: #fb7185;
+        --cat-outros: #94a3b8;
       color-scheme: dark;
     }
     * { box-sizing: border-box; }
@@ -94,11 +106,12 @@
     .toolbar .spacer { flex: 1; }
     .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
     .tally { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin: 12px 0; }
-    .tally div { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
-    .tally span, .tally small { overflow-wrap: anywhere; }
+    .tally div { border: 1px solid var(--border); border-radius: 10px; padding: 8px 7px; display: grid; gap: 2px; min-width: 0; }
+    .tally span, .tally small { overflow-wrap: break-word; }
     .tally .total { border-color: var(--done); }
+    .tally [data-cat] { border-top: 4px solid var(--c); }
     .tally b { font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
-    .tally span { font-size: .85rem; }
+    .tally span { font-size: .8rem; }
     .tally small { color: var(--muted); font-size: .78rem; }
     .tally small strong { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
     .tally .total small strong { color: var(--done); }
@@ -121,7 +134,7 @@
     .day {
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 10px;
+      padding: 8px;
       background: var(--bg);
       display: flex;
       flex-direction: column;
@@ -131,12 +144,20 @@
     .day-name { font-weight: 600; font-size: .9rem; }
     .day-name small { color: var(--muted); font-weight: 400; }
 
-    .workout { display: flex; align-items: center; gap: 6px; font-size: .9rem; }
-    .workout input[type=checkbox] { width: 18px; height: 18px; flex: none; accent-color: var(--done); }
-    .workout span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .workout {
+      display: flex; align-items: center; gap: 5px; font-size: .85rem;
+      border-left: 4px solid var(--c, var(--border)); border-radius: 6px; padding: 4px 0 4px 5px;
+      background: color-mix(in srgb, var(--c, transparent) 12%, transparent);
+    }
+    [data-cat="musc"] { --c: var(--cat-musc); }
+    [data-cat="tenis"] { --c: var(--cat-tenis); }
+    [data-cat="aero"] { --c: var(--cat-aero); }
+    [data-cat="outros"] { --c: var(--cat-outros); }
+    .workout input[type=checkbox] { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--done); }
+    .workout span { flex: 1; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
     .workout.done span { text-decoration: line-through; color: var(--muted); }
     .workout.late span { color: var(--late); }
-    .workout .x { border: none; background: none; padding: 0 4px; color: var(--muted); font-size: 1rem; }
+    .workout .x { border: none; background: none; padding: 0 3px; color: var(--muted); font-size: 1rem; }
     .add-row { display: flex; gap: 4px; margin-top: auto; }
     .add-row input { flex: 1; padding: 4px 8px; font-size: .85rem; }
     .add-row button { padding: 4px 8px; }
@@ -271,11 +292,13 @@
   const STORAGE_KEY = 'treinos.v1';
   const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
   const CATEGORIES = [
-    { name: 'Musculação', test: /academia|gym|push|pull|legs|muscula/i },
-    { name: 'Tênis',    test: /t[êe]nis|tennis/i },
-    { name: 'Aeróbico', test: /corrida|run|bike|bicicleta|nata[çc][ãa]o|swim|aer[óo]b|cardio/i },
+    { name: 'Musculação', key: 'musc', test: /academia|gym|push|pull|legs|muscula/i },
+    { name: 'Tênis', key: 'tenis', test: /t[êe]nis|tennis/i },
+    { name: 'Aeróbico', key: 'aero', test: /corrida|run|bike|bicicleta|nata[çc][ãa]o|swim|aer[óo]b|cardio/i },
   ];
-  const categoryOf = name => (CATEGORIES.find(c => c.test.test(name)) || { name: 'Outros' }).name;
+  const OTHER = { name: 'Outros', key: 'outros' };
+  const categoryOf = name => (CATEGORIES.find(c => c.test.test(name)) || OTHER).name;
+  const catKey = catName => (CATEGORIES.find(c => c.name === catName) || OTHER).key;
 
   const $ = id => document.getElementById(id);
   const uid = () => crypto.randomUUID();
@@ -545,12 +568,12 @@
     const s = stats(items);
     // Só os tipos que têm treino planejado nesta semana, na ordem de CATEGORIES.
     const names = [...CATEGORIES.map(c => c.name), 'Outros'].filter(n => s.byCat[n]);
-    const tile = (cls, done, label, total) =>
-      `<div class="${cls}"><b>${done}</b><span>${label}</span>` +
-      `<small><strong>${total ? Math.round(100 * done / total) : 0}%</strong> de ${total} planejado${total === 1 ? '' : 's'}</small></div>`;
+    const tile = (cls, done, label, total, cat = '') =>
+      `<div class="${cls}"${cat ? ` data-cat="${cat}"` : ''}><b>${done}</b><span>${label}</span>` +
+      `<small><strong>${total ? Math.round(100 * done / total) : 0}%</strong> de ${total}</small></div>`;
     return `<div class="tally" aria-label="Treinos realizados na semana">
       ${tile('total', s.done, 'Total', s.total)}
-      ${names.map(n => { const v = s.byCat[n] || { done: 0, total: 0 }; return tile('', v.done, n, v.total); }).join('')}
+      ${names.map(n => { const v = s.byCat[n] || { done: 0, total: 0 }; return tile('', v.done, n, v.total, catKey(n)); }).join('')}
     </div>`;
   }
 
@@ -570,7 +593,7 @@
 
   // ---------- render ----------
   function workoutHtml(i, { late = false, removable = true } = {}) {
-    return `<div class="workout ${i.done ? 'done' : ''} ${late ? 'late' : ''}">
+    return `<div class="workout ${i.done ? 'done' : ''} ${late ? 'late' : ''}" data-cat="${catKey(categoryOf(i.name))}">
       <input type="checkbox" data-toggle="${i.id}" ${i.done ? 'checked' : ''} aria-label="Concluído">
       <span>${escapeHtml(i.name)}${i.done ? ' 👊🏻' : ''}</span>
       ${removable ? `<button class="x" data-remove="${i.id}" title="Remover">×</button>` : ''}
