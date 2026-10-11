@@ -102,7 +102,12 @@
     button.danger { color: var(--danger); }
     button.small { padding: 4px 10px; font-size: .85rem; }
 
-    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; justify-content: flex-end; margin-bottom: 12px; }
+    .toolbar button { white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+    @media (max-width: 640px) {
+      .toolbar .spacer { display: none; }
+      .toolbar button:not([hidden]) { flex: 1 1 0; padding: 6px 4px; font-size: .78rem; }
+    }
     .toolbar .spacer { flex: 1; }
     .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
     .tally { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin: 12px 0; }
@@ -258,7 +263,7 @@
   <!-- Semana Ideal -->
   <section class="panel">
     <details id="idealDetails">
-      <summary>Semana Ideal (modelo)</summary>
+      <summary>Semana Ideal</summary>
       <p class="subtitle" style="margin:8px 0 12px">Um treino por linha. Usada como ponto de partida ao montar uma nova semana.</p>
       <div class="ideal" id="ideal"></div>
       <div class="actions" style="margin-top:12px">
