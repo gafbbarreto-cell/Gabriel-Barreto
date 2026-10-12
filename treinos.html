@@ -282,7 +282,7 @@
     </details>
   </section>
 
-  <div class="toolbar">
+  <div class="toolbar" id="backupBar">
     <div class="spacer"></div>
     <button type="button" class="small" id="copyBackupBtn">Copiar backup</button>
     <button type="button" class="small" id="exportBtn">Exportar backup</button>
@@ -379,6 +379,8 @@
   let state = window.claude ? emptyState() : (readLocal() || seed());
   let cloud = null;       // { main, weeks } quando o banco está ativo
   let loading = !!window.claude;
+  // Com os dados na nuvem, a linha de backup não é necessária; volta se a página cair para o navegador.
+  $('backupBar').hidden = !!window.claude;
 
   function setSync(kind) {
     const text = {
@@ -460,6 +462,7 @@
       loading = false;
       state = readLocal() || emptyState();
       setSync('local');
+      $('backupBar').hidden = false;
       renderIdeal();
       render();
       return;
