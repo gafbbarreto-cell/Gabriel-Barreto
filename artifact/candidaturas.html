@@ -439,9 +439,7 @@
       '</button></div>' : '') +
       (facts ? '<div class="facts">' + facts + '</div>' : '') +
       (a.nextSteps ? '<div class="next"><b>Próximos passos:</b> ' + esc(a.nextSteps) + '</div>' : '') +
-      (a.jobDescription ? '<details><summary>Descrição da vaga</summary><p>' + esc(a.jobDescription) + '</p></details>' : '') +
-      (a.companyDescription ? '<details><summary>Sobre a empresa</summary><p>' + esc(a.companyDescription) + '</p></details>' : '') +
-      '<div class="card-foot"><span>Cadastrada em ' + fmtDate(a.createdAt) + ' · atualizada em ' + fmtDate(a.updatedAt) + '</span>' +
+      '<div class="card-foot"><span></span>' +
       '<span class="actions">' +
         '<button type="button" class="btn small" data-edit="' + esc(a.id) + '">Editar</button>' +
         '<button type="button" class="btn small danger' + (armed ? ' armed' : '') + '" data-delete="' + esc(a.id) + '">' + (armed ? 'Confirmar exclusão' : 'Excluir') + '</button>' +
