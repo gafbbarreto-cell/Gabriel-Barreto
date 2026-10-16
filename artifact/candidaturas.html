@@ -397,7 +397,6 @@
         'padding-inline:calc(' + slope.toFixed(2) + '% + 12px)">' +
         '<button type="button" class="band-title" data-stage="' + esc(s.name) + '" aria-pressed="' + (filter === s.name) + '" title="Quantas candidaturas chegaram a esta etapa' + (conv ? ' e que % da etapa anterior avançou' : '') + '">' +
           '<span class="band-name">' + esc(s.name) + '</span>' +
-          '<span class="band-n">' + reached[k] + (reached[k] === 1 ? ' chegou' : ' chegaram') + (conv ? ' · ' + conv : '') + '</span>' +
         '</button>' +
         (here.length ? '<div class="chips">' + chipsHTML(here) + '</div>' : '<span class="band-empty">ninguém nesta etapa agora</span>') +
       '</div>';
