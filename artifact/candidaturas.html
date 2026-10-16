@@ -257,8 +257,6 @@
         <option value="company">Empresa (A–Z)</option>
       </select>
     </label>
-    <button class="btn small" id="importBtn" type="button">Importar backup</button>
-    <input type="file" id="importFile" accept="application/json,.json" hidden>
     <button class="btn small" id="toggleBelow" type="button" aria-expanded="true" aria-controls="below">Esconder</button>
   </div>
 
@@ -597,59 +595,6 @@
   document.addEventListener('click', function (e) {
     if (armedDelete && !e.target.closest('[data-delete]')) { armedDelete = null; render(); }
   });
-
-  // Importa o backup .json do app local. Nunca apaga nada:
-  // mesma empresa só preenche campos vazios; empresa nova é adicionada.
-  $('importBtn').addEventListener('click', function () { $('importFile').click(); });
-  $('importFile').addEventListener('change', function (e) {
-    var file = e.target.files[0];
-    e.target.value = '';
-    if (!file || !col) return;
-    file.text().then(function (txt) {
-      var items = JSON.parse(txt);
-      if (!Array.isArray(items)) throw new Error('formato');
-      return importItems(items);
-    }).then(function (r) {
-      toast('Importação concluída: ' + r.added + ' nova(s), ' + r.updated + ' atualizada(s).');
-    }).catch(function (err) {
-      if (err && err.code) writeError(err); else toast('Arquivo inválido. Use o backup exportado pelo app.');
-    });
-  });
-
-  function norm(s) { return String(s || '').trim().toLowerCase(); }
-  async function importItems(items) {
-    var added = 0, updated = 0;
-    for (var i = 0; i < items.length; i++) {
-      var it = items[i];
-      if (!it || !it.company) continue;
-      var clean = {};
-      FIELDS.forEach(function (f) { if (it[f] !== undefined && it[f] !== '' && it[f] !== null) clean[f] = it[f]; });
-      if (clean.bussolaScore !== undefined) clean.bussolaScore = Number(clean.bussolaScore);
-      if (clean.status !== undefined) clean.status = normStatus(clean.status);
-      var match = apps.filter(function (a) { return norm(a.company) === norm(it.company); })[0];
-      if (match) {
-        var patch = {};
-        Object.keys(clean).forEach(function (k) {
-          var cur = match[k];
-          if (cur === undefined || cur === null || cur === '') patch[k] = clean[k];
-        });
-        if (Object.keys(patch).length) {
-          patch.updatedAt = new Date().toISOString();
-          await col.doc(match.id).update(patch);
-          updated++;
-        }
-      } else {
-        var now = new Date().toISOString();
-        var doc = Object.assign({ role: '', status: STATUSES[0].name, nextSteps: '' }, clean, {
-          createdAt: it.createdAt || now, updatedAt: it.updatedAt || now
-        });
-        await col.doc().set(doc);
-        apps.push(Object.assign({ id: '_pending' + i }, doc));
-        added++;
-      }
-    }
-    return { added: added, updated: updated };
-  }
 
   render();
 
