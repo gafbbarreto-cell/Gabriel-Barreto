@@ -115,7 +115,7 @@
     .tally span, .tally small { overflow-wrap: break-word; }
     .tally .total { border-color: var(--done); }
     .tally [data-cat] { border-top: 4px solid var(--c); }
-    .tally b { font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .tally b { font-size: 1.5rem; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .tally span { font-size: .8rem; }
     .tally small { color: var(--muted); font-size: .78rem; }
     .tally small strong { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -596,8 +596,8 @@
     // Só os tipos que têm treino planejado nesta semana, na ordem de CATEGORIES.
     const names = [...CATEGORIES.map(c => c.name), 'Outros'].filter(n => s.byCat[n]);
     const tile = (cls, done, label, total, cat = '') =>
-      `<div class="${cls}"${cat ? ` data-cat="${cat}"` : ''}><b>${done}</b><span>${label}</span>` +
-      `<small><strong>${total ? Math.round(100 * done / total) : 0}%</strong> de ${total}</small></div>`;
+      `<div class="${cls}"${cat ? ` data-cat="${cat}"` : ''}><b>${done}/${total}</b><span>${label}</span>` +
+      `<small><strong>${total ? Math.round(100 * done / total) : 0}%</strong></small></div>`;
     return `<div class="tally" aria-label="Treinos realizados na semana">
       ${tile('total', s.done, 'Total', s.total)}
       ${names.map(n => { const v = s.byCat[n] || { done: 0, total: 0 }; return tile('', v.done, n, v.total, catKey(n)); }).join('')}
@@ -665,7 +665,7 @@
         }).join('')}
       </div>
       <div class="week-foot">
-        <button class="primary" id="closeWeekBtn">Concluir semana</button>
+        <button class="primary" id="closeWeekBtn">Concluir</button>
       </div>`;
     $('closeWeekBtn').onclick = closeWeek;
   }
@@ -736,7 +736,7 @@
     const pending = s.total - s.done;
     const msg = `Concluir a semana ${ddmm(week.start)}?\n\nFeitos: ${s.done} de ${s.total}.` +
       (pending ? `\n${pending} treino(s) não feitos ficarão registrados como não realizados.` : '');
-    if (!await ask(msg, { okText: 'Concluir semana' })) return;
+    if (!await ask(msg, { okText: 'Concluir' })) return;
     const closed = { ...week, closedAt: new Date().toISOString() };
     state.history = [closed, ...state.history.filter(w => w.start !== week.start)];
     state.current = null;
