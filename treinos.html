@@ -148,14 +148,20 @@
       gap: 6px;
     }
     .day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-    .day-name { font-weight: 600; font-size: .9rem; }
+    .day-name { font-weight: 600; font-size: .9rem; display: flex; align-items: center; gap: 6px; }
+    .day-name > span { flex: 1; min-width: 0; }
+    .add-btn {
+      width: 26px; height: 26px; padding: 0; border-radius: 50%; flex: none;
+      font-size: 1rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+    }
     .day-body { display: flex; flex-direction: column; gap: 6px; flex: 1; }
-    @media (min-width: 900px) { .days { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+    @media (min-width: 641px) { .days { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
     /* Celular: um dia por linha, nome à esquerda e treinos à direita. */
     @media (max-width: 640px) {
       .days { grid-template-columns: 1fr; gap: 8px; }
       .day { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; align-items: start; }
-      .day-name { display: flex; flex-direction: column; padding-top: 4px; }
+      .day-name { flex-direction: column; align-items: flex-start; padding-top: 4px; }
+      .day-name > span { display: flex; flex-direction: column; }
       .workout span { overflow-wrap: break-word; }
     }
     .day-name small { color: var(--muted); font-weight: 400; }
@@ -174,7 +180,7 @@
     .workout.done span { text-decoration: line-through; color: var(--muted); }
     .workout.late span { color: var(--late); }
     .workout .x { border: none; background: none; padding: 0 3px; color: var(--muted); font-size: 1rem; }
-    .add-row { display: flex; gap: 4px; margin-top: auto; }
+    .add-row { display: flex; gap: 4px; }
     .add-row input { flex: 1; padding: 4px 8px; font-size: .85rem; }
     .add-row button { padding: 4px 8px; }
 
@@ -621,6 +627,8 @@
     </div>`;
   }
 
+  let openAddDay = null; // dia com o campo de novo treino aberto
+
   function renderCurrent() {
     const panel = $('currentPanel');
     const week = state.current;
@@ -642,12 +650,15 @@
           const date = addDays(week.start, d);
           const items = week.items.filter(i => i.day === d);
           return `<div class="day ${date === today ? 'today' : ''}">
-            <div class="day-name">${name} <small>${ddmm(date)}${date === today ? ' · hoje' : ''}</small></div>
+            <div class="day-name">
+              <span>${name} <small>${ddmm(date)}${date === today ? ' · hoje' : ''}</small></span>
+              <button type="button" class="add-btn" data-add-open="${d}" aria-label="Adicionar treino em ${name}" title="Adicionar treino">+</button>
+            </div>
             <div class="day-body">
               ${items.map(i => workoutHtml(i, { late: !i.done && date < today })).join('')}
-              <form class="add-row" data-add="${d}">
-                <input placeholder="+" aria-label="Novo treino para ${name}">
-                <button type="submit" class="small">+</button>
+              <form class="add-row" data-add="${d}" ${openAddDay === d ? '' : 'hidden'}>
+                <input placeholder="Nome do treino" aria-label="Novo treino para ${name}" enterkeyhint="done">
+                <button type="submit" class="small">OK</button>
               </form>
             </div>
           </div>`;
@@ -763,6 +774,16 @@
     if (item) { item.done = e.target.checked; saveMain(); render(); }
   });
 
+  // Fecha o campo de novo treino quando ele perde o foco vazio.
+  document.addEventListener('focusout', e => {
+    const form = e.target.closest && e.target.closest('form[data-add]');
+    if (!form || e.target.tagName !== 'INPUT' || e.target.value.trim()) return;
+    if (e.relatedTarget && form.contains(e.relatedTarget)) return;
+    if (e.relatedTarget && e.relatedTarget.dataset && e.relatedTarget.dataset.addOpen !== undefined) return;
+    openAddDay = null;
+    form.hidden = true;
+  });
+
   document.addEventListener('submit', e => {
     const day = e.target.dataset.add;
     if (day === undefined) return;
@@ -771,6 +792,7 @@
     const name = input.value.trim();
     if (!name) return;
     state.current.items.push({ id: uid(), day: Number(day), name, done: false });
+    openAddDay = Number(day);
     saveMain();
     render();
     // mantém o foco no mesmo dia para adicionar vários treinos seguidos
@@ -780,6 +802,14 @@
 
   document.addEventListener('click', async e => {
     const t = e.target.dataset;
+    if (t.addOpen !== undefined) {
+      const d = Number(t.addOpen);
+      openAddDay = openAddDay === d ? null : d;
+      render();
+      const input = document.querySelector(`form[data-add="${d}"] input`);
+      if (input && openAddDay === d) input.focus();
+      return;
+    }
     if (t.remove) {
       state.current.items = state.current.items.filter(i => i.id !== t.remove);
       saveMain(); render();
