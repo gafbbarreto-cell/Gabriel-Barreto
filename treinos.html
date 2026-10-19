@@ -180,6 +180,22 @@
     .workout span { flex: 1; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
     .workout.done span { text-decoration: line-through; color: var(--muted); }
     .workout.late span { color: var(--late); }
+    .workout .grip {
+      flex: none; align-self: stretch; width: 16px; margin: -4px -2px -4px -3px; padding: 0 3px;
+      background: radial-gradient(circle, var(--muted) 1.2px, transparent 1.6px) center / 5px 5px repeat-y,
+                  radial-gradient(circle, var(--muted) 1.2px, transparent 1.6px) center / 5px 5px repeat-y;
+      background-position: 3px center, 8px center;
+      background-size: 5px 5px; background-repeat: repeat-y;
+      background-clip: content-box; opacity: .7;
+      cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+    }
+    .workout .grip:hover { opacity: 1; }
+    .workout.dragging { opacity: .35; }
+    .drag-ghost {
+      position: fixed; z-index: 20; pointer-events: none; margin: 0;
+      box-shadow: 0 6px 18px rgba(0,0,0,.25); background: var(--card);
+    }
+    .day.drop-target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
     .workout .x { border: none; background: none; padding: 0 3px; color: var(--muted); font-size: 1rem; }
     .add-row { display: flex; gap: 4px; }
     .add-row input { flex: 1; padding: 4px 8px; font-size: .85rem; }
@@ -621,7 +637,8 @@
 
   // ---------- render ----------
   function workoutHtml(i, { late = false, removable = true } = {}) {
-    return `<div class="workout ${i.done ? 'done' : ''} ${late ? 'late' : ''}" data-cat="${catKey(categoryOf(i.name))}">
+    return `<div class="workout ${i.done ? 'done' : ''} ${late ? 'late' : ''}" data-cat="${catKey(categoryOf(i.name))}" data-id="${i.id}">
+      ${removable ? `<i class="grip" data-grip="${i.id}" title="Arraste para outro dia" aria-hidden="true"></i>` : ''}
       <input type="checkbox" data-toggle="${i.id}" ${i.done ? 'checked' : ''} aria-label="Concluído">
       <span>${escapeHtml(i.name)}${i.done ? ' 👊🏻' : ''}</span>
       ${removable ? `<button class="x" data-remove="${i.id}" title="Remover">×</button>` : ''}
@@ -650,7 +667,7 @@
         ${DAYS.map((name, d) => {
           const date = addDays(week.start, d);
           const items = week.items.filter(i => i.day === d);
-          return `<div class="day ${date === today ? 'today' : ''}">
+          return `<div class="day ${date === today ? 'today' : ''}" data-day="${d}">
             <div class="day-name">
               <span>${name} <small>${ddmm(date)}${date === today ? ' · hoje' : ''}</small></span>
               <button type="button" class="add-btn" data-add-open="${d}" aria-label="Adicionar treino em ${name}" title="Adicionar treino">+</button>
@@ -774,6 +791,75 @@
     const item = findItem(id);
     if (item) { item.done = e.target.checked; saveMain(); render(); }
   });
+
+  // ---------- arrastar treino para outro dia (mouse e toque) ----------
+  let drag = null;
+  document.addEventListener('pointerdown', e => {
+    const id = e.target.dataset && e.target.dataset.grip;
+    if (!id || !state.current) return;
+    e.preventDefault();
+    const row = e.target.closest('.workout');
+    const rect = row.getBoundingClientRect();
+    const ghost = row.cloneNode(true);
+    ghost.classList.add('drag-ghost');
+    ghost.style.width = rect.width + 'px';
+    ghost.style.left = rect.left + 'px';
+    ghost.style.top = rect.top + 'px';
+    document.body.appendChild(ghost);
+    row.classList.add('dragging');
+    drag = { id, row, ghost, dx: e.clientX - rect.left, dy: e.clientY - rect.top, target: null, x: e.clientX, y: e.clientY, raf: 0 };
+    e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+    autoScroll();
+  });
+  document.addEventListener('pointermove', e => {
+    if (!drag) return;
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    drag.ghost.style.left = (e.clientX - drag.dx) + 'px';
+    drag.ghost.style.top = (e.clientY - drag.dy) + 'px';
+    updateDropTarget();
+  });
+  // Dia que está debaixo do dedo/mouse agora (também depois da rolagem automática).
+  function updateDropTarget() {
+    const el = document.elementFromPoint(drag.x, drag.y);
+    const day = el && el.closest('.day[data-day]');
+    if (day !== drag.target) {
+      if (drag.target) drag.target.classList.remove('drop-target');
+      drag.target = day;
+      if (day) day.classList.add('drop-target');
+    }
+  }
+  // Rola a página quando o treino é arrastado perto da borda da tela (lista longa no celular).
+  function autoScroll() {
+    if (!drag) return;
+    const edge = 70, h = window.innerHeight;
+    const before = window.scrollY;
+    if (drag.y < edge) window.scrollBy(0, -10);
+    else if (drag.y > h - edge) window.scrollBy(0, 10);
+    if (window.scrollY !== before) updateDropTarget();
+    drag.raf = requestAnimationFrame(autoScroll);
+  }
+  function endDrag(drop) {
+    if (!drag) return;
+    const { id, row, ghost, target, raf } = drag;
+    drag = null;
+    cancelAnimationFrame(raf);
+    ghost.remove();
+    row.classList.remove('dragging');
+    if (target) target.classList.remove('drop-target');
+    const item = drop && target && findItem(id);
+    const day = target ? Number(target.dataset.day) : null;
+    if (item && item.day !== day) {
+      item.day = day;
+      state.current.items = [...state.current.items.filter(i => i !== item), item];
+      saveMain();
+      render();
+      toast(`${item.name} movido para ${DAYS[day]}.`);
+    }
+  }
+  document.addEventListener('pointerup', () => endDrag(true));
+  document.addEventListener('pointercancel', () => endDrag(false));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') endDrag(false); });
 
   // Fecha o campo de novo treino quando ele perde o foco vazio.
   document.addEventListener('focusout', e => {
