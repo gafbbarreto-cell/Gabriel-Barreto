@@ -112,6 +112,8 @@
   .band-n { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
   .chip {
+    touch-action: none;
+    cursor: grab;
     border: 1px solid var(--c);
     background: var(--surface);
     color: var(--ink);
@@ -122,6 +124,14 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .chip:hover { background: var(--surface-2); }
+  .chip.dragging { opacity: 0.35; }
+  .drag-ghost {
+    position: fixed; z-index: 50; pointer-events: none;
+    transform: translate(-50%, -50%) rotate(-3deg);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    cursor: grabbing;
+  }
+  .band.drop-target { outline: 2px dashed var(--c); outline-offset: -4px; }
   .tick { color: var(--done); font-weight: 700; margin-left: 4px; }
   .legend { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
   .interview { font-size: 13px; font-weight: 600; }
@@ -392,7 +402,7 @@
       var inset = slope / w * 100;             // mesmo recuo, em % da faixa
       var here = active.filter(function (a) { return a.status === s.name; });
       var conv = (k > 0 && reached[k - 1] > 0) ? Math.round(reached[k] / reached[k - 1] * 100) + '%' : '';
-      html += '<div class="band' + (filter === s.name ? ' active' : '') + '" style="--c:' + s.c + ';width:' + w + '%;' +
+      html += '<div class="band' + (filter === s.name ? ' active' : '') + '" data-band="' + esc(s.name) + '" style="--c:' + s.c + ';width:' + w + '%;' +
         'clip-path:polygon(0 0,100% 0,' + (100 - inset).toFixed(2) + '% 100%,' + inset.toFixed(2) + '% 100%);' +
         'padding-inline:calc(' + slope.toFixed(2) + '% + 12px)">' +
         '<button type="button" class="band-title" data-stage="' + esc(s.name) + '" aria-pressed="' + (filter === s.name) + '" title="Quantas candidaturas chegaram a esta etapa' + (conv ? ' e que % da etapa anterior avançou' : '') + '">' +
@@ -544,7 +554,57 @@
      .then(function () { $('submitBtn').disabled = false; });
   });
 
+  // Arrastar uma empresa de uma faixa do funil para outra muda a etapa dela.
+  // Funciona com mouse e com toque; um toque sem arrastar continua abrindo o card.
+  var drag = null, suppressClick = false;
+  $('pipeline').addEventListener('pointerdown', function (e) {
+    var chip = e.target.closest('[data-jump]');
+    if (!chip || e.button > 0) return;
+    drag = { chip: chip, id: chip.getAttribute('data-jump'), x: e.clientX, y: e.clientY, ghost: null, over: null };
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    if (!drag.ghost) {
+      if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) < 6) return;
+      drag.ghost = drag.chip.cloneNode(true);
+      drag.ghost.classList.add('drag-ghost');
+      drag.ghost.style.setProperty('--c', getComputedStyle(drag.chip).getPropertyValue('--c'));
+      document.body.appendChild(drag.ghost);
+      drag.chip.classList.add('dragging');
+    }
+    e.preventDefault();
+    drag.ghost.style.left = e.clientX + 'px';
+    drag.ghost.style.top = e.clientY + 'px';
+    var under = document.elementFromPoint(e.clientX, e.clientY);
+    var band = under && under.closest('[data-band]');
+    if (band !== drag.over) {
+      if (drag.over) drag.over.classList.remove('drop-target');
+      if (band) band.classList.add('drop-target');
+      drag.over = band;
+    }
+  });
+  function endDrag(commit) {
+    if (!drag) return;
+    var d = drag; drag = null;
+    if (!d.ghost) return;
+    suppressClick = true;
+    setTimeout(function () { suppressClick = false; }, 0);
+    d.ghost.remove();
+    d.chip.classList.remove('dragging');
+    if (d.over) d.over.classList.remove('drop-target');
+    if (!commit || !d.over) return;
+    var to = d.over.getAttribute('data-band');
+    var a = apps.filter(function (x) { return x.id === d.id; })[0];
+    if (!a || a.status === to || !col) return;
+    col.doc(d.id).update({ status: to, stageDone: false, updatedAt: new Date().toISOString() })
+      .then(function () { toast(a.company + ' movida para ' + to + '.'); })
+      .catch(writeError);
+  }
+  document.addEventListener('pointerup', function () { endDrag(true); });
+  document.addEventListener('pointercancel', function () { endDrag(false); });
+
   $('pipeline').addEventListener('click', function (e) {
+    if (suppressClick) { e.preventDefault(); return; }
     var chip = e.target.closest('[data-jump]');
     if (chip) {
       var id = chip.getAttribute('data-jump');
