@@ -196,6 +196,7 @@
       box-shadow: 0 6px 18px rgba(0,0,0,.25); background: var(--card);
     }
     .day.drop-target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    .rest { color: var(--muted); font-size: .85rem; font-style: italic; padding: 4px 0 4px 2px; }
     .workout .x { border: none; background: none; padding: 0 3px; color: var(--muted); font-size: 1rem; }
     .add-row { display: flex; gap: 4px; }
     .add-row input { flex: 1; padding: 4px 8px; font-size: .85rem; }
@@ -673,6 +674,7 @@
               <button type="button" class="add-btn" data-add-open="${d}" aria-label="Adicionar treino em ${name}" title="Adicionar treino">+</button>
             </div>
             <div class="day-body">
+              ${items.length || openAddDay === d ? '' : '<div class="rest">Rest Day</div>'}
               ${items.map(i => workoutHtml(i, { late: !i.done && date < today })).join('')}
               <form class="add-row" data-add="${d}" ${openAddDay === d ? '' : 'hidden'}>
                 <input placeholder="Nome do treino" aria-label="Novo treino para ${name}" enterkeyhint="done">
