@@ -334,7 +334,7 @@
   const CATEGORIES = [
     { name: 'Musculação', key: 'musc', test: /academia|gym|push|pull|legs|muscula/i },
     { name: 'Tênis', key: 'tenis', test: /t[êe]nis|tennis/i },
-    { name: 'Aeróbico', key: 'aero', test: /corrida|run|bike|bicicleta|nata[çc][ãa]o|swim|aer[óo]b|cardio/i },
+    { name: 'Aeróbico', key: 'aero', test: /corrida|caminhada|walk|run|bike|bicicleta|nata[çc][ãa]o|swim|aer[óo]b|cardio/i },
   ];
   const OTHER = { name: 'Outros', key: 'outros' };
   const categoryOf = name => (CATEGORIES.find(c => c.test.test(name)) || OTHER).name;
