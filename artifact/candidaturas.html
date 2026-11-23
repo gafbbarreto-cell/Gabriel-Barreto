@@ -144,26 +144,6 @@
   .below { display: flex; flex-direction: column; gap: 24px; }
   .below[hidden] { display: none; }
 
-  /* Probabilidade de Offer */
-  .odds {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 14px 18px;
-    display: flex; flex-direction: column; gap: 8px;
-    margin-top: 6px;
-  }
-  .odds-main { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-  .odds-pct { font-family: var(--font-mono); font-size: 34px; font-weight: 500; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1; }
-  .odds-label { font-weight: 600; }
-  .odds-sub { font-size: 14px; color: var(--ink-soft); }
-  .odds details p, .odds details li { font-size: 14px; color: var(--ink-soft); }
-  .odds table { border-collapse: collapse; font-size: 14px; margin-top: 8px; }
-  .odds th, .odds td { text-align: left; padding: 4px 14px 4px 0; border-bottom: 1px solid var(--line); }
-  .odds th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
-  .odds td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-  .table-scroll { overflow-x: auto; }
-
   /* Toolbar */
   .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .toolbar .spacer { flex: 1; }
@@ -252,7 +232,6 @@
       <button type="button" class="btn small" id="showAll" data-stage="">Mostrar todas</button>
     </div>
     <div class="funnel" id="funnel"></div>
-    <div class="odds" id="odds"></div>
   </section>
 
   <div class="toolbar">
@@ -361,33 +340,6 @@
     }).join('');
   }
 
-  // Chance de uma candidatura chegar a Offer conforme a etapa em que está
-  // (Aplicado, Recruiter, Hiring Manager, Final, Offer). Ajustável aqui.
-  var OFFER_CHANCE = [0.10, 0.20, 0.30, 0.50, 1];
-  function offerChance(k) { return OFFER_CHANCE[k] || 0; }
-  function fmtPct(x) {
-    var v = x * 100;
-    if (v > 0 && v < 1) return '<1%';
-    return (v < 10 ? v.toFixed(1).replace('.', ',') : Math.round(v)) + '%';
-  }
-  function renderOdds(active) {
-    var miss = 1;
-    active.forEach(function (a) { miss *= 1 - offerChance(flowIndex(a.status)); });
-    var p = active.length ? 1 - miss : 0;
-    var rows = FLOW.map(function (s, k) {
-      var n = active.filter(function (a) { return flowIndex(a.status) === k; }).length;
-      return '<tr><td>' + esc(s.name) + '</td><td class="num">' + n + '</td><td class="num">' + fmtPct(offerChance(k)) + '</td></tr>';
-    }).join('');
-    $('odds').innerHTML =
-      '<div class="odds-main"><span class="odds-pct">' + fmtPct(p) + '</span>' +
-      '<span><span class="odds-label">de chance de receber pelo menos 1 Offer</span><br>' +
-      '<span class="odds-sub">com as ' + active.length + ' candidatura' + (active.length === 1 ? '' : 's') + ' ativa' + (active.length === 1 ? '' : 's') + ' no funil</span></span></div>' +
-      '<details><summary>Como é calculado</summary>' +
-      '<p>Cada candidatura tem uma chance de chegar a Offer conforme a etapa em que está. A chance de receber pelo menos 1 Offer é 1 menos a chance de nenhuma delas chegar lá. A chance de cada etapa está na tabela abaixo. Recusado e Desisti não entram na conta.</p>' +
-      '<div class="table-scroll"><table><thead><tr><th>Etapa</th><th>Vagas</th><th>Chance de Offer</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      '</details>';
-  }
-
   function renderPipeline() {
     var active = apps.filter(function (a) { return flowIndex(a.status) >= 0; });
     // Quem está numa etapa mais adiante já passou pelas anteriores.
@@ -413,10 +365,8 @@
     });
     $('funnel').innerHTML = html;
 
-
     $('showAll').textContent = 'Mostrar todas (' + apps.length + ')';
     $('showAll').parentNode.hidden = !filter;
-    renderOdds(active);
   }
 
   function sorted(list) {
