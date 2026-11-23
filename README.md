@@ -34,3 +34,26 @@ A importação nunca apaga nada da lista atual:
 - Candidatura do mesmo backup (mesmo identificador): é substituída pela versão do arquivo.
 - Mesma empresa vinda de outra fonte (ex.: dados do Bússola de Carreira): só os campos vazios são preenchidos; status e próximos passos que você já escreveu ficam como estão.
 - Empresa nova: é adicionada.
+
+---
+
+# Meus Treinos
+
+Versão da aba **Treinos** da planilha Sports para acompanhar os treinos da semana. Abra `treinos.html` no navegador (ou clique em **Meus Treinos** na página de candidaturas).
+
+- **Montar a semana:** começa a partir da Semana Ideal, repetindo a última semana, ou em branco. Adicione (`+ treino`) ou remova (`×`) treinos em qualquer dia.
+- **Dar check:** marque o treino quando fizer (vira 👊🏻).
+- **O que falta fazer:** lista os pendentes separados em *Atrasados*, *Hoje* e *Próximos dias*.
+- **Resumo:** feitos / planejados no total e por tipo (Academia, Tênis, Aeróbico), como o quadro Treinos/Semana.
+- **Concluir semana:** guarda a semana no histórico (o que não foi feito fica registrado) e já abre a montagem da semana seguinte.
+- **Semana Ideal:** edite o modelo (um treino por linha em cada dia).
+- **Copiar para a planilha:** copia a semana no mesmo formato da aba Treinos (Semana dd/mm, Treino 1, Treino 2, com 👊🏻) para colar no Excel/Sheets.
+
+### Onde os dados ficam
+
+- **Página publicada no Claude (link):** os treinos ficam salvos na nuvem, no banco da própria página. Um check feito no celular aparece no computador e vice-versa. O indicador no topo mostra "Salvo na nuvem" ou "Salvando…". Só o dono da página consegue alterar os dados.
+- **Arquivo `treinos.html` aberto direto no navegador:** os dados ficam só naquele navegador (`localStorage`), como nas candidaturas. Na primeira vez, a página já vem com a Semana Ideal e as semanas 28/09 e 05/10 da planilha.
+
+Se a página publicada encontrar treinos que ficaram salvos só no navegador (versões antigas), ela pergunta se você quer enviá-los para a nuvem. As semanas concluídas que já estão na nuvem são mantidas.
+
+Para guardar uma cópia: **Copiar backup** copia um texto para guardar numa nota ou e-mail, e **Colar backup** restaura. No arquivo local também dá para usar **Exportar/Importar backup** com um arquivo `.json`.
