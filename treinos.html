@@ -135,8 +135,9 @@
 
     .week-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
     .week-title { font-weight: 600; font-size: 1.15rem; }
-    .week-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
-    @media (max-width: 640px) { .week-foot button { width: 100%; } }
+    .week-foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin-top: 12px; }
+    .cal-info { flex: 1; min-width: 0; font-size: .82rem; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    @media (max-width: 640px) { .week-foot button.primary { width: 100%; } }
 
     .days { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
     .day {
@@ -492,6 +493,7 @@
       return;
     }
     cloud = { main: db.doc('treinos/estado'), weeks: db.collection('semanas') };
+    window.claude.use('mcp').then(m => { mcp = m; renderCalInfo(); }).catch(() => {});
     let gotMain = false, gotWeeks = false;
     const ready = () => {
       if (!gotMain || !gotWeeks) return;
@@ -685,9 +687,11 @@
         }).join('')}
       </div>
       <div class="week-foot">
+        <span class="cal-info" id="calInfo" hidden></span>
         <button class="primary" id="closeWeekBtn">Concluir</button>
       </div>`;
     $('closeWeekBtn').onclick = closeWeek;
+    renderCalInfo();
   }
 
   function renderNewWeek() {
@@ -785,6 +789,7 @@
     saveMain();
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    calSendMissing();
   }
 
   document.addEventListener('change', e => {
@@ -793,6 +798,117 @@
     const item = findItem(id);
     if (item) { item.done = e.target.checked; saveMain(); render(); }
   });
+
+  // ---------- Google Calendar ----------
+  // Cada treino vira um evento de 1h no Google Calendar, na cor da categoria.
+  // Começa às 7h (quinta às 12h, horário da aula de tênis); vários treinos no mesmo dia ficam em sequência.
+  const CAL = 'Google Calendar';
+  const CAL_START_HOUR = 7;
+  const CAL_THURSDAY_HOUR = 12;
+  const CAL_COLORS = { musc: '3', tenis: '10', aero: '11', outros: '8' }; // Uva, Manjericão, Tomate, Grafite
+  let mcp = null;            // conector, quando a página roda publicada no Claude
+  const calBusy = new Set(); // treinos com chamada em andamento
+
+  function calSlot(item) {
+    const week = state.current;
+    const sameDay = week.items.filter(i => i.day === item.day);
+    const idx = Math.max(0, sameDay.findIndex(i => i.id === item.id));
+    const hour = Math.min(22, (item.day === 3 ? CAL_THURSDAY_HOUR : CAL_START_HOUR) + idx);
+    const date = addDays(week.start, item.day);
+    const hh = h => String(h).padStart(2, '0');
+    return { startTime: `${date}T${hh(hour)}:00:00`, endTime: `${date}T${hh(hour + 1)}:00:00` };
+  }
+
+  function calErrorText(e) {
+    const code = e && e.code;
+    if (code === 'needs_reauth') return 'Reconecte o Google Calendar em claude.ai › Configurações › Conectores.';
+    if (code === 'server_not_connected' || code === 'selection_required')
+      return 'Conecte o Google Calendar em claude.ai › Configurações › Conectores para os treinos irem para a agenda.';
+    if (code === 'not_in_manifest' || code === 'approval_required')
+      return 'O acesso ao Google Calendar não foi liberado para esta página. Libere nas permissões da página.';
+    if (code === 'not_granted' || code === 'capability_disabled') return 'O Google Calendar não está disponível aqui.';
+    return 'Não foi possível atualizar o Google Calendar' + (e && e.message ? `: ${e.message}` : '.');
+  }
+  function calFail(e) {
+    toast(calErrorText(e));
+    if (e && ['not_granted', 'capability_disabled', 'capability_removed'].includes(e.code)) mcp = null;
+    renderCalInfo();
+  }
+
+  async function calCreate(item) {
+    if (!mcp || !state.current || item.eventId || calBusy.has(item.id)) return;
+    calBusy.add(item.id);
+    renderCalInfo();
+    try {
+      const res = await mcp.callTool(CAL, 'create_event', {
+        summary: item.name,
+        ...calSlot(item),
+        colorId: CAL_COLORS[catKey(categoryOf(item.name))],
+        description: 'Treino adicionado pelo Meus Treinos.',
+        notificationLevel: 'NONE',
+      });
+      const p = res && res.payload;
+      const eventId = p && (p.id || (p.event && p.event.id) || p.eventId);
+      const current = findItem(item.id);
+      if (!current) {
+        // o treino foi removido enquanto o evento era criado
+        if (eventId) calDelete(eventId);
+      } else if (eventId) {
+        current.eventId = eventId;
+        saveMain();
+      }
+    } catch (e) {
+      calFail(e);
+    } finally {
+      calBusy.delete(item.id);
+      renderCalInfo();
+    }
+  }
+
+  async function calMove(item) {
+    if (!mcp) return;
+    if (!item.eventId) return calCreate(item);
+    try {
+      await mcp.callTool(CAL, 'update_event', { eventId: item.eventId, ...calSlot(item), notificationLevel: 'NONE' });
+    } catch (e) { calFail(e); }
+  }
+
+  async function calDelete(eventId) {
+    if (!mcp) return;
+    try {
+      await mcp.callTool(CAL, 'delete_event', { eventId, notificationLevel: 'NONE' });
+    } catch (e) { calFail(e); }
+  }
+
+  // Envia, um de cada vez, os treinos da semana que ainda não estão na agenda.
+  async function calSendMissing() {
+    if (!mcp || !state.current) return;
+    const missing = state.current.items.filter(i => !i.eventId);
+    for (const i of missing) {
+      if (!mcp) break;
+      await calCreate(i);
+    }
+  }
+
+  function renderCalInfo() {
+    const el = $('calInfo');
+    if (!el) return;
+    el.hidden = !mcp || !state.current;
+    if (el.hidden) return;
+    const items = state.current.items;
+    const missing = items.filter(i => !i.eventId).length;
+    if (calBusy.size) el.textContent = 'Google Calendar: enviando…';
+    else if (!missing) el.textContent = items.length ? 'Google Calendar: todos os treinos na agenda ✓' : 'Google Calendar conectado';
+    else {
+      el.textContent = `Google Calendar: ${missing} treino${missing === 1 ? '' : 's'} fora da agenda `;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'small';
+      b.dataset.calSend = '';
+      b.textContent = 'Enviar';
+      el.appendChild(b);
+    }
+  }
 
   // ---------- arrastar treino para outro dia (mouse e toque) ----------
   let drag = null;
@@ -857,6 +973,7 @@
       saveMain();
       render();
       toast(`${item.name} movido para ${DAYS[day]}.`);
+      calMove(item);
     }
   }
   document.addEventListener('pointerup', () => endDrag(true));
@@ -880,8 +997,10 @@
     const input = e.target.querySelector('input');
     const name = input.value.trim();
     if (!name) return;
-    state.current.items.push({ id: uid(), day: Number(day), name, done: false });
+    const added = { id: uid(), day: Number(day), name, done: false };
+    state.current.items.push(added);
     openAddDay = Number(day);
+    calCreate(added);
     saveMain();
     render();
     // mantém o foco no mesmo dia para adicionar vários treinos seguidos
@@ -900,9 +1019,12 @@
       return;
     }
     if (t.remove) {
+      const gone = findItem(t.remove);
       state.current.items = state.current.items.filter(i => i.id !== t.remove);
       saveMain(); render();
+      if (gone && gone.eventId) calDelete(gone.eventId);
     }
+    if (t.calSend !== undefined) calSendMissing();
     if (t.copyHist) copySheet(state.history[Number(t.copyHist)]);
     if (t.reopen) {
       const [w] = state.history.splice(Number(t.reopen), 1);
